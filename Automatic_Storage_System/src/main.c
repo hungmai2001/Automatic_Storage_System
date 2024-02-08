@@ -7,11 +7,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "driver/sdmmc_host.h"
-#include "driver/sdmmc_defs.h"
-#include "sdmmc_cmd.h"
-#include "esp_vfs_fat.h"
-
 #include "esp_camera.h"
 #include "esp_timer.h"
 
@@ -65,57 +60,13 @@ static esp_err_t init_camera()
   return ESP_OK;
 }
 
-static void init_sdcard()
-{
-  esp_err_t ret = ESP_FAIL;
-  sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-  sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-  esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-      .format_if_mount_failed = false,
-      .max_files = 3,
-  };
-  sdmmc_card_t *card;
-
-  ESP_LOGI(TAG, "Mounting SD card...");
-  ret = esp_vfs_fat_sdmmc_mount("/sdcard", &host, &slot_config, &mount_config, &card);
-
-  if (ret == ESP_OK)
-  {
-    ESP_LOGI(TAG, "SD card mount successfully!");
-  }
-  else
-  {
-    ESP_LOGE(TAG, "Failed to mount SD card VFAT filesystem. Error: %s", esp_err_to_name(ret));
-  }
-}
-
 void app_main()
 {
-  init_sdcard();
   init_camera();
 
-  // while (1)
-  // {
-    printf("Start Application.\r\n");
-    ESP_LOGI(TAG, "Taking picture...");
-    camera_fb_t *pic = esp_camera_fb_get();
-    int64_t timestamp = esp_timer_get_time();
+  printf("Start Application.\r\n");
+  ESP_LOGI(TAG, "Taking picture...");
+  camera_fb_t *pic = esp_camera_fb_get();
 
-    char *pic_name = malloc(17 + sizeof(int64_t));
-    sprintf(pic_name, "/sdcard/pic_pic_%lli.jpg", timestamp);
-    FILE *file = fopen(pic_name, "w");
-    if (file != NULL)
-    {
-      fwrite(pic->buf, 1, pic->len, file);
-      ESP_LOGI(TAG, "File saved: %s", pic_name);
-    }
-    else
-    {
-      ESP_LOGE(TAG, "Could not open file =(");
-    }
-    fclose(file);
-    free(pic_name);
-
-    vTaskDelay(20000 / portTICK_RATE_MS);
-  // }
+  vTaskDelay(20000 / portTICK_RATE_MS);
 }
