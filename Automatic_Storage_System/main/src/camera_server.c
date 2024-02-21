@@ -12,7 +12,6 @@
 #include "web_pages.h"
 #include "camera_pins.h"
 #include "wifi_connection.h"
-#include "sd_card_reader.h"
 #include "async_request_worker.h"
 #include <esp_log.h>
 #include <stddef.h>
@@ -31,7 +30,11 @@ static int camera_h = 0;
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n"; 
+static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+
+// Store wi-fi credentials
+char ssid[32] = "Trinh";
+char password[64] = "0333755401 ";
 
 static esp_err_t init_camera(void) {
     camera_config_t camera_config = {
@@ -222,6 +225,7 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req)
     return res;
 }
 
+// Handle requirements when receiving from WS client
 esp_err_t handle_ws_req(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         ESP_LOGI(TAG, "Handshake done, the new connection was opened");
@@ -324,18 +328,6 @@ void app_main() {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
-
-    // Initialize SD card
-    err = init_sd_card();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "SD card init error: %s", esp_err_to_name(err));
-        return;
-    }
-
-    // Load wifi credentials from SD card
-    char ssid[32] = "Hungmai";
-    char password[64] = "hungmaixx";
-    // load_wifi_credentials(ssid, password);
 
     // Connect to wifi
     connect_wifi(ssid, password);
