@@ -9,10 +9,8 @@
 #include <esp_timer.h>
 #include <driver/gpio.h>
 
-#include "web_pages.h"
 #include "camera_pins.h"
 #include "wifi_connection.h"
-#include "async_request_worker.h"
 #include <esp_log.h>
 #include <stddef.h>
 #include "face_detector.h"
@@ -97,23 +95,9 @@ esp_err_t init_pins(void) {
     return gpio_config(&io_conf);
 }
 
-
-// Flip on/off LED
-void flip_led(void) {
-    led_status = !led_status;
-    gpio_set_level(LED_GPIO_PIN, led_status);
-}
-
 // Flip on/off face detection
 void flip_face_detection(void) {
     face_det_status = !face_det_status;
-}
-
-// API handler
-esp_err_t get_index_handler(httpd_req_t* req) {
-    /* Send a simple response */
-    httpd_resp_send(req, index_page, HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
 }
 
 // Send data to websocket
@@ -127,102 +111,6 @@ void ws_send_data(httpd_req_t* req, char* msg, int len) {
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
     }
-}
-
-// Camera streamer handler
-esp_err_t jpg_stream_httpd_handler(httpd_req_t *req)
-{
-    // This handler is first invoked on the httpd thread.
-    // In order to free the httpd thread to handle other requests,
-    // we must resubmit our request to be handled on an async worker thread.
-    if (is_on_async_worker_thread() == false) {
-
-        // submit
-        if (submit_async_req(req, jpg_stream_httpd_handler) == ESP_OK) {
-            return ESP_OK;
-        } else {
-            httpd_resp_set_status(req, "503 Busy");
-            httpd_resp_sendstr(req, "<div>Camera busy, workers not available.</div>");
-            return ESP_OK;
-        }
-    }
-
-    // Start camera streaming
-    camera_fb_t* fb = NULL;
-    esp_err_t res = ESP_OK;
-    size_t _jpg_buf_len;
-    uint8_t* _jpg_buf;
-    char* part_buf[64];
-    static int64_t last_frame = 0;
-    if(!last_frame) {
-        last_frame = esp_timer_get_time();
-    }
-
-    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
-    if(res != ESP_OK){
-        return res;
-    }
-
-    while(true){
-        // Capture camera frame
-        fb = esp_camera_fb_get();
-        if (!fb) {
-            ESP_LOGE(TAG, "Camera capture failed");
-            res = ESP_FAIL;
-            break;
-        }
-
-        // Run inference
-        if (face_det_status) {
-            inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
-        }
-
-        // Convert to jpeg if needed
-        if(fb->format != PIXFORMAT_JPEG) {
-            bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-            if(!jpeg_converted) {
-                ESP_LOGE(TAG, "JPEG compression failed");
-                esp_camera_fb_return(fb);
-                res = ESP_FAIL;
-            }
-        } 
-        else {
-            _jpg_buf_len = fb->len;
-            _jpg_buf = fb->buf;
-        }
-
-        // Stream captured data
-        if(res == ESP_OK){
-            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-        }
-        if(res == ESP_OK){
-            size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
-
-            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
-        }
-        if(res == ESP_OK){
-            res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
-        }
-
-        // Free captured data
-        if(fb->format != PIXFORMAT_JPEG){
-            free(_jpg_buf);
-        }
-        esp_camera_fb_return(fb);
-        if(res != ESP_OK) {
-            break;
-        }
-
-        // Calculate frame rate
-        int64_t fr_end = esp_timer_get_time();
-        frame_time_ms = (fr_end - last_frame) / 1000;
-        last_frame = fr_end;
-    }
-
-    ESP_LOGI(TAG, "Camera streaming stopped");
-    last_frame = 0;
-    frame_time_ms = 0;
-    return res;
 }
 
 // Handle requirements when receiving from WS client
@@ -264,7 +152,7 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
     ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
     if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
         strcmp((char*)ws_pkt.payload,"flip_flash") == 0) {
-        flip_led();
+        // flip_led();
     }
     else if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
         strcmp((char*)ws_pkt.payload,"flip_face_det") == 0) {
@@ -280,14 +168,6 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
     return ret;
 }
 
-// Setup HTTP server
-httpd_uri_t uri_get = {
-    .uri = "/stream",
-    .method = HTTP_GET,
-    .handler = jpg_stream_httpd_handler,
-    .user_ctx = NULL
-};
-
 // Websocket handler
 httpd_uri_t ws_uri = {
     .uri = "/ws",
@@ -297,22 +177,12 @@ httpd_uri_t ws_uri = {
     .is_websocket = true
 };
 
-// Setup HTTP server
-httpd_uri_t uri_index_get = {
-    .uri = "/",
-    .method = HTTP_GET,
-    .handler = get_index_handler,
-    .user_ctx = NULL
-};
-
 httpd_handle_t setup_server(void) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     httpd_handle_t stream_httpd = NULL;
 
     // Start the httpd server and register handlers
     if (httpd_start(&stream_httpd , &config) == ESP_OK) {
-        httpd_register_uri_handler(stream_httpd, &uri_get);
-        httpd_register_uri_handler(stream_httpd, &uri_index_get);
         httpd_register_uri_handler(stream_httpd, &ws_uri);
     }
 
@@ -349,7 +219,6 @@ void app_main() {
         gpio_set_level(LED_GPIO_PIN, led_status);
 
         // Start web server
-        start_async_req_workers();
         setup_server();
         ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
     }
