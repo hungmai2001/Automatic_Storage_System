@@ -4,7 +4,7 @@
 #include <image/dl_image.hpp>
 #include <esp_log.h>
 #include <cstdio>
-
+static const char *TAG = "======================================";
 extern "C" {
     static const float score_threshold = 0.1;
     static const float nms_threshold = 0.3;
@@ -54,7 +54,7 @@ extern "C" {
 
         int i = 0;
         for (std::list<dl::detect::result_t>::iterator prediction = results.begin(); prediction != results.end(); prediction++, i++) {
-            printf("[%d] score: %f, box: [%d, %d, %d, %d]\n", i, prediction->score, prediction->box[0], prediction->box[1], prediction->box[2], prediction->box[3]);
+            ESP_LOGI(TAG,"[%d] score: %f, box: [%d, %d, %d, %d]\n", i, prediction->score, prediction->box[0], prediction->box[1], prediction->box[2], prediction->box[3]);
 
             draw_hollow_rectangle(image_data, height, width,
                                   DL_MAX(prediction->box[0], 0),

@@ -14,21 +14,23 @@
 #include <esp_log.h>
 #include <stddef.h>
 #include "face_detector.h"
+#include <mbedtls/base64.h>
+
+#define LOG_DEBUG
+#define CAL_TIME
+
+#ifdef CAL_TIME
+#include <time.h>
+clock_t start, end, start1, end1;
+#endif
 
 #define LED_GPIO_PIN 4 // GPIO 4 for the onboard LED
-static int led_status = 0;
-static int face_det_status = 0;
+SemaphoreHandle_t g_handle_image = NULL;
+camera_fb_t g_image;
 
 static const char *TAG = "camera_server";
-static int64_t frame_time_ms = 0;
 static int camera_w = 0;
 static int camera_h = 0;
-
-// Web stream metadata
-#define PART_BOUNDARY "123456789000000000000987654321"
-static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
-static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
 // Store wi-fi credentials
 char ssid[32] = "Trinh";
@@ -95,22 +97,27 @@ esp_err_t init_pins(void) {
     return gpio_config(&io_conf);
 }
 
-// Flip on/off face detection
-void flip_face_detection(void) {
-    face_det_status = !face_det_status;
+int32_t calcBase64EncodedSize(int origDataSize)
+{
+	// Number of blocks in 6-bit units (rounded up in 6-bit units)
+	int32_t numBlocks6 = ((origDataSize * 8) + 5) / 6;
+	// Number of blocks in units of 4 characters (rounded up in units of 4 characters)
+	int32_t numBlocks4 = (numBlocks6 + 3) / 4;
+	// Number of characters without line breaks
+	int32_t numNetChars = numBlocks4 * 4;
+	// Size considering line breaks every 76 characters (line breaks are "\ r \ n")
+	return numNetChars;
 }
 
-// Send data to websocket
-void ws_send_data(httpd_req_t* req, char* msg, int len) {
-    httpd_ws_frame_t ws_pkt;
-    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
-    ws_pkt.len = len;
-    ws_pkt.payload = (uint8_t*)msg;
-    esp_err_t ret = httpd_ws_send_frame(req, &ws_pkt);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
-    }
+esp_err_t Image2Base64(camera_fb_t g_image_buf, size_t base64_buffer_len, uint8_t * base64_buffer)
+{
+	// Convert from JPEG to BASE64
+	size_t encord_len;
+	mbedtls_base64_encode(base64_buffer, base64_buffer_len, &encord_len, g_image_buf.buf, g_image_buf.len);
+#ifdef LOG_DEBUG
+	ESP_LOGI(TAG, "mbedtls_base64_encode: encord_len=%d", encord_len);
+#endif
+	return ESP_OK;
 }
 
 // Handle requirements when receiving from WS client
@@ -149,23 +156,73 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
         }
         ESP_LOGI(TAG, "Got packet with message: %s", ws_pkt.payload);
     }
-    ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
-    if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
-        strcmp((char*)ws_pkt.payload,"flip_flash") == 0) {
-        // flip_led();
-    }
-    else if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
-        strcmp((char*)ws_pkt.payload,"flip_face_det") == 0) {
-        flip_face_detection();
-    }
+#ifdef LOG_DEBUG
+	ESP_LOGI(TAG, "Packet final: %d", ws_pkt.final);
+	ESP_LOGI(TAG, "Packet fragmented: %d", ws_pkt.fragmented);
+	ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
+#endif
+    while(true) {
+		// Get Image size
+		xSemaphoreTake(g_handle_image, portMAX_DELAY);
+#ifdef CAL_TIME
+		start1 = clock();
+#endif
+		// Get Base64 size
+		int32_t base64Size = calcBase64EncodedSize(g_image.len);
+#ifdef LOG_DEBUG
+		ESP_LOGI(TAG, "base64Size=%"PRIi32, base64Size);
+#endif
+		// Allocate Base64 buffer
+		// You have to use calloc. It doesn't work with malloc.
+		uint8_t *base64_buffer = NULL;
+		size_t base64_buffer_len = base64Size + 1;
+		base64_buffer = calloc(1, base64_buffer_len);
+		if (base64_buffer == NULL) {
+			ESP_LOGE(TAG, "calloc fail. base64_buffer_len %d", base64_buffer_len);
+			return ESP_FAIL;
+		}
+		memset(base64_buffer, 0, base64_buffer_len);
 
-    // Send framerate to websocket
-    char msg[120];
-    sprintf(msg, "{\"ms_time\": %lld, \"led\": %d, \"resolution\": \"%dx%d\", \"face_det\": %d}", 
-            frame_time_ms, led_status, camera_w, camera_h, face_det_status);
-    ws_send_data(req, msg, strlen(msg));
-    free(buf);
-    return ret;
+		// Convert from Image to Base64
+		ret = Image2Base64(g_image, base64_buffer_len, base64_buffer);
+#ifdef LOG_DEBUG
+		ESP_LOGI(TAG, "Image2Base64=%d", ret);
+#endif
+		if (ret != ESP_OK) {
+			free(base64_buffer);
+			return ret;
+		}
+		// Send by WebSocket
+		ws_pkt.payload = base64_buffer;
+		ws_pkt.len = base64Size;
+#ifdef LOG_DEBUG
+		ESP_LOGI(TAG, "Packet ws_pkt.len: %d", ws_pkt.len);
+		ESP_LOGI(TAG, "Packet ws_pkt.type: %d", ws_pkt.type);
+		ESP_LOGI(TAG, "Packet ws_pkt.fragmented: %d", ws_pkt.fragmented);
+		ESP_LOGI(TAG, "Packet ws_pkt.final: %d", ws_pkt.final);
+#endif
+#ifdef CAL_TIME_SEND
+		start2 = clock();
+#endif
+		ret = httpd_ws_send_frame(req, &ws_pkt);
+		if (ret != ESP_OK) {
+			ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+		}
+#ifdef CAL_TIME_SEND
+		end2 = clock();
+		double time_taken = ((double)(end2 - start2))/CLOCKS_PER_SEC; // in seconds
+		ESP_LOGI(TAG, "took %f mseconds to execute",time_taken*1000);
+#endif
+		free(base64_buffer);
+#ifdef CAL_TIME
+		end1 = clock();
+		double time_taken = ((double)(end1 - start1))/CLOCKS_PER_SEC; // in seconds
+		ESP_LOGI(TAG, "took %f mseconds to execute",time_taken*1000);
+#endif
+		xSemaphoreGive(g_handle_image);
+		vTaskDelay(pdMS_TO_TICKS(20));
+	}
+	return ret;
 }
 
 // Websocket handler
@@ -201,28 +258,74 @@ void app_main() {
 
     // Connect to wifi
     connect_wifi(ssid, password);
-    if (wifi_connect_status) {
-        // Initialize camera
-        err = init_camera();
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to init camera: %s", esp_err_to_name(err));
-            return;
+	// Initialize camera
+	err = init_camera();
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to init camera: %s", esp_err_to_name(err));
+		return;
+	}
+
+	// Initialize pins
+	err = init_pins();
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to init pins: %s", esp_err_to_name(err));
+		return;
+	}
+	
+	//Create mutex
+	g_handle_image = xSemaphoreCreateMutex();
+	// Start web server
+	setup_server();
+	ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
+
+	size_t _jpg_buf_len;
+    uint8_t* _jpg_buf;
+	while (true) {
+		xSemaphoreTake(g_handle_image, portMAX_DELAY);
+#ifdef CAL_TIME
+		start = clock();
+#endif
+		// Save Picture to Local file
+		camera_fb_t * fb = esp_camera_fb_get();
+		if (!fb) {
+			ESP_LOGE(TAG, "Camera Capture Failed");
+			break;
+		}
+		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
+
+		// Convert to jpeg if needed
+        if(fb->format != PIXFORMAT_JPEG) {
+            bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
+            if(!jpeg_converted) {
+                ESP_LOGE(TAG, "JPEG compression failed");
+				// break;
+            }
+        } 
+        else {
+            _jpg_buf_len = fb->len;
+            _jpg_buf = fb->buf;
+        }
+		g_image = *fb;
+		g_image.buf = _jpg_buf;
+		g_image.len = _jpg_buf_len;
+		// Free captured data
+        if(fb->format != PIXFORMAT_JPEG){
+            free(_jpg_buf);
         }
 
-        // Initialize pins
-        err = init_pins();
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to init pins: %s", esp_err_to_name(err));
-            return;
-        }
-        // Set LED pin to low, disabled
-        gpio_set_level(LED_GPIO_PIN, led_status);
-
-        // Start web server
-        setup_server();
-        ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
-    }
-    else {
-        ESP_LOGI(TAG, "Failed to connected to Wifi, check your network credentials");
-    }
+#ifdef LOG_DEBUG
+		ESP_LOGI(TAG, "pictureSize=%d",g_image.len);
+		ESP_LOGI(TAG, "pictureSize=%s",g_image.buf);
+		ESP_LOGI(TAG, "pictureSize=%d",g_image.width);
+#endif
+		//return the frame buffer back to the driver for reuse
+		esp_camera_fb_return(fb);
+#ifdef CAL_TIME
+		end = clock();
+		double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
+		ESP_LOGI(TAG, "took %f mseconds to execute",time_taken*1000);
+#endif
+		xSemaphoreGive(g_handle_image);
+		vTaskDelay(pdMS_TO_TICKS(5));
+	}
 }
