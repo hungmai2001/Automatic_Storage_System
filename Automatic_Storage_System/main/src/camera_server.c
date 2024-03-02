@@ -17,7 +17,7 @@
 #include <mbedtls/base64.h>
 
 #define LOG_DEBUG
-#define CAL_TIME
+// #define CAL_TIME
 
 #ifdef CAL_TIME
 #include <time.h>
@@ -193,8 +193,9 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 			return ret;
 		}
 		// Send by WebSocket
-		ws_pkt.payload = base64_buffer;
-		ws_pkt.len = base64Size;
+		ws_pkt.payload = g_image.buf;
+		ws_pkt.len = g_image.len;
+		ws_pkt.type = HTTPD_WS_TYPE_BINARY;
 #ifdef LOG_DEBUG
 		ESP_LOGI(TAG, "Packet ws_pkt.len: %d", ws_pkt.len);
 		ESP_LOGI(TAG, "Packet ws_pkt.type: %d", ws_pkt.type);
@@ -217,10 +218,10 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 #ifdef CAL_TIME
 		end1 = clock();
 		double time_taken = ((double)(end1 - start1))/CLOCKS_PER_SEC; // in seconds
-		ESP_LOGI(TAG, "took %f mseconds to execute",time_taken*1000);
+		ESP_LOGI(TAG, "WS: took %f mseconds to execute",time_taken*1000);
 #endif
 		xSemaphoreGive(g_handle_image);
-		vTaskDelay(pdMS_TO_TICKS(20));
+		vTaskDelay(pdMS_TO_TICKS(2000));
 	}
 	return ret;
 }
@@ -291,41 +292,43 @@ void app_main() {
 			ESP_LOGE(TAG, "Camera Capture Failed");
 			break;
 		}
+		ESP_LOGI(TAG, "Picture format=%d",fb->format);
 		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
 
-		// Convert to jpeg if needed
-        if(fb->format != PIXFORMAT_JPEG) {
-            bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-            if(!jpeg_converted) {
-                ESP_LOGE(TAG, "JPEG compression failed");
-				// break;
-            }
-        } 
-        else {
-            _jpg_buf_len = fb->len;
-            _jpg_buf = fb->buf;
-        }
+		// // Convert to jpeg if needed
+        // if(fb->format != PIXFORMAT_JPEG) {
+        //     bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
+        //     if(!jpeg_converted) {
+        //         ESP_LOGE(TAG, "JPEG compression failed");
+		// 		// break;
+        //     }
+        // }
+        // else {
+        //     _jpg_buf_len = fb->len;
+        //     _jpg_buf = fb->buf;
+        // }
+		// ESP_LOGI(TAG, "Convert format=%d",fb->format);
 		g_image = *fb;
-		g_image.buf = _jpg_buf;
-		g_image.len = _jpg_buf_len;
+		// g_image.buf = _jpg_buf;
+		// g_image.len = _jpg_buf_len;
 		// Free captured data
-        if(fb->format != PIXFORMAT_JPEG){
-            free(_jpg_buf);
-        }
+        // if(fb->format != PIXFORMAT_JPEG){
+        //     free(_jpg_buf);
+        // }
 
 #ifdef LOG_DEBUG
 		ESP_LOGI(TAG, "pictureSize=%d",g_image.len);
-		ESP_LOGI(TAG, "pictureSize=%s",g_image.buf);
-		ESP_LOGI(TAG, "pictureSize=%d",g_image.width);
+		// ESP_LOGI(TAG, "pictureSize=%s",g_image.buf);
+		// ESP_LOGI(TAG, "pictureSize=%d",g_image.width);
 #endif
 		//return the frame buffer back to the driver for reuse
 		esp_camera_fb_return(fb);
 #ifdef CAL_TIME
 		end = clock();
 		double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
-		ESP_LOGI(TAG, "took %f mseconds to execute",time_taken*1000);
+		ESP_LOGI(TAG, "MAIN: took %f mseconds to execute",time_taken*1000);
 #endif
 		xSemaphoreGive(g_handle_image);
-		vTaskDelay(pdMS_TO_TICKS(5));
+		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 }
