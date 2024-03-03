@@ -38,7 +38,7 @@
       Server connection fail.
     </div>
     <div>
-      <canvas id="canvas_image" width="640" height="480"></canvas>
+      <canvas id="canvas_image" width="160" height="120"></canvas>
     </div>
   </body>
 
@@ -86,15 +86,14 @@
     {
       // const startTime = new Date().getTime(); 
       // console.log("on_message");
-      console.log(recv_data.data);
+      // console.log(recv_data.data);
       // console.log(typeof(recv_data.data));
       // console.log(recv_data.data.length);
       if (1 == giu_do) {
         // if (recv_data.data.length > 2) {
-          console.log(recv_data.data.length);
-          console.log(typeof(recv_data.data));
+          // console.log(typeof(recv_data.data));
           var recv_image_data = new Uint8Array(recv_data.data);
-          console.log(recv_image_data);
+          // console.log(recv_image_data);
           displayImage(recv_image_data);
         // }
         // else {
@@ -111,19 +110,19 @@
 
     async function displayImage(pixels) {
       // Kích thước hình ảnh
-      const xres = 320;
-      const yres = 240;
+      const xres = 160;
+      const yres = 120;
       
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
-      const scale = 2;
+      const scale = 3;
       canvas.width = xres*scale;
       canvas.height = yres*scale;
       const ctx = canvas.getContext('2d');
 
       // Tạo một ImageData object để quản lý dữ liệu hình ảnh
       const imgData = ctx.createImageData(xres, yres);
-
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       let ln = 0;
 
       // Duyệt qua từng hàng và cột của hình ảnh
@@ -136,9 +135,9 @@
               const pixel16 = (0xffff & pixels[i + 1]) | ((0xffff & pixels[i]) << 8);
 
               // Chuyển đổi màu
-              imgData.data[ln + 0] = ((((pixel16 >> 11) & 0x1F) * 527) + 23) >> 6;
-              imgData.data[ln + 1] = ((((pixel16 >> 5) & 0x3F) * 259) + 33) >> 6;
-              imgData.data[ln + 2] = (((pixel16 & 0x1F) * 527) + 23) >> 6;
+              imgData.data[ln + 0] = ((pixel16 >> 8) & 0xF8);   // Red
+              imgData.data[ln + 1] = ((pixel16 >> 3) & 0xFC);   // Green
+              imgData.data[ln + 2] = ((pixel16 << 3) & 0xF8);   // Blue
               imgData.data[ln + 3] = 255; // Alpha channel, có thể điều chỉnh nếu cần
 
               ln += 4; // Di chuyển đến pixel tiếp theo trong imgData
@@ -149,7 +148,7 @@
       ctx.putImageData(imgData, 0, 0);
 
       // Thêm canvas vào body (hoặc bất kỳ phần tử HTML nào bạn muốn hiển thị)
-      document.body.appendChild(canvas);
+      // document.body.appendChild(canvas);
     }
   </script>
 </html>

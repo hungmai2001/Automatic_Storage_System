@@ -1,5 +1,5 @@
 #include <time.h>
-clock_t start, end, start1, end1;
+clock_t start, end;
 		start = clock();
         end = clock();
 		double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds

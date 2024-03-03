@@ -5,13 +5,18 @@
 #include <esp_timer.h>
 #include <driver/gpio.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+
 #include "camera_pins.h"
 #include "wifi_connection.h"
 #include <esp_log.h>
 #include <stddef.h>
 #include "face_detector.h"
 #include <mbedtls/base64.h>
-
+#include <time.h>
+clock_t start, end;
 // #define LOG_DEBUG
 
 
@@ -20,6 +25,7 @@ SemaphoreHandle_t g_handle_image = NULL;
 camera_fb_t g_image;
 
 static const char *TAG = "camera_server";
+static const char *TAG1 = "=============HANDLE_WS";
 static int camera_w = 0;
 static int camera_h = 0;
 
@@ -47,12 +53,12 @@ static esp_err_t init_camera(void) {
         .pin_href = CAM_PIN_HREF,
         .pin_pclk = CAM_PIN_PCLK,
 
-        .xclk_freq_hz = 10000000,
+        .xclk_freq_hz = 20000000,
         .ledc_timer = LEDC_TIMER_0,
         .ledc_channel = LEDC_CHANNEL_0,
 
         .pixel_format = PIXFORMAT_RGB565,
-        .frame_size = FRAMESIZE_QVGA,
+        .frame_size = FRAMESIZE_QQVGA,
 
         .jpeg_quality = 12,
         .fb_count = 2,
@@ -133,11 +139,20 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
     while(true) 
     {
 		// Take mutex
-		xSemaphoreTake(g_handle_image, portMAX_DELAY);
-
+		// xSemaphoreTake(g_handle_image, portMAX_DELAY);
+        camera_fb_t * fb = esp_camera_fb_get();
+		if (!fb) {
+			ESP_LOGE(TAG, "Camera Capture Failed");
+			break;
+		}
+#ifdef LOG_DEBUG
+		ESP_LOGI(TAG, "Picture format=%d",fb->format);
+#endif
+        //Detect face
+		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
 		//store value to ws_pkt
-		ws_pkt.payload = g_image.buf;
-		ws_pkt.len = g_image.len;
+		ws_pkt.payload = fb->buf;
+		ws_pkt.len = fb->len;
 		ws_pkt.type = HTTPD_WS_TYPE_BINARY;
 #ifdef LOG_DEBUG
 		ESP_LOGI(TAG, "Packet ws_pkt.len: %d", ws_pkt.len);
@@ -145,17 +160,21 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 		ESP_LOGI(TAG, "Packet ws_pkt.fragmented: %d", ws_pkt.fragmented);
 		ESP_LOGI(TAG, "Packet ws_pkt.final: %d", ws_pkt.final);
 #endif
+        esp_camera_fb_return(fb);
+        // start = clock();
         // Send to WebSocket
 		ret = httpd_ws_send_frame(req, &ws_pkt);
 		if (ret != ESP_OK) {
 			ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
 		}
-
+        // end = clock();
+		// double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
+		// ESP_LOGI(TAG1, "took %f mseconds to execute",time_taken*1000);
         //Give mutex
-		xSemaphoreGive(g_handle_image);
+		// xSemaphoreGive(g_handle_image);
 
         //Switch to other task
-		vTaskDelay(pdMS_TO_TICKS(2000));
+		vTaskDelay(pdMS_TO_TICKS(15));
 	}
 	return ret;
 }
@@ -214,18 +233,20 @@ void app_main() {
 	setup_server();
 	ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
 	
-    while (true) 
+    while (false) 
     {
         //Take mutex
 		xSemaphoreTake(g_handle_image, portMAX_DELAY);
+        	start = clock();
 		// Save Picture to Local file
 		camera_fb_t * fb = esp_camera_fb_get();
 		if (!fb) {
 			ESP_LOGE(TAG, "Camera Capture Failed");
 			break;
 		}
+#ifdef LOG_DEBUG
 		ESP_LOGI(TAG, "Picture format=%d",fb->format);
-
+#endif
         //Detect face
 		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
 		
@@ -237,11 +258,13 @@ void app_main() {
 #endif
 		//return the frame buffer back to the driver for reuse
 		esp_camera_fb_return(fb);
-
+        end = clock();
+		double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
+		ESP_LOGI(TAG, "MAIN: took %f mseconds to execute",time_taken*1000);
         //Give mutex
 		xSemaphoreGive(g_handle_image);
 		
         //Switch to other task
-        vTaskDelay(pdMS_TO_TICKS(500));
+        // vTaskDelay(pdMS_TO_TICKS(10));
 	}
 }

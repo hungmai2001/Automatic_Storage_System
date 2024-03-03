@@ -15,7 +15,7 @@ extern "C" {
     void draw_hollow_rectangle(uint16_t *image, const uint32_t image_height, const uint32_t image_width,
                            uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2,
                            const uint16_t color) {
-        int line_width = 5; // Line width in pixels
+        int line_width = 3; // Line width in pixels
         uint32_t x, y, w;
 
         // Ensure the rectangle boundaries are within the image
