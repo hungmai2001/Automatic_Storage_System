@@ -96,16 +96,6 @@
           var recv_image_data = new Uint8Array(recv_data.data);
           console.log(recv_image_data);
           displayImage(recv_image_data);
-          // var canvas_image = document.getElementById('canvas_image');
-          // var ctx = canvas_image.getContext('2d');
-          // var image = new Image();
-          // // var base64Data = btoa(String.fromCharCode.apply(null, recv_image_data));
-          // image.src = 'data:image/jpeg;base64,' + recv_data.data;
-          // // image.onload = function() {
-          // //   ctx.drawImage(image, 0, 0);
-          // //   // ctx.putImageData(image, 0, 0);
-          // // }
-          // document.body.appendChild(image);
         // }
         // else {
         //   /* Do nothing */
@@ -160,7 +150,6 @@
 
       // Thêm canvas vào body (hoặc bất kỳ phần tử HTML nào bạn muốn hiển thị)
       document.body.appendChild(canvas);
-  }
-
+    }
   </script>
 </html>

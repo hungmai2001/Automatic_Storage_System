@@ -1,8 +1,4 @@
-// Select desired board from the list below
-// #define BOARD_WROVER_KIT 1
-// #define BOARD_CAMERA_MODEL_ESP_EYE 1
 #define BOARD_ESP32CAM_AITHINKER 1
-// #define BOARD_CAMERA_MODEL_TTGO_T_JOURNAL 1
 
 #include <nvs_flash.h>
 #include <esp_http_server.h>
@@ -16,13 +12,8 @@
 #include "face_detector.h"
 #include <mbedtls/base64.h>
 
-#define LOG_DEBUG
-// #define CAL_TIME
+// #define LOG_DEBUG
 
-#ifdef CAL_TIME
-#include <time.h>
-clock_t start, end, start1, end1;
-#endif
 
 #define LED_GPIO_PIN 4 // GPIO 4 for the onboard LED
 SemaphoreHandle_t g_handle_image = NULL;
@@ -97,29 +88,6 @@ esp_err_t init_pins(void) {
     return gpio_config(&io_conf);
 }
 
-int32_t calcBase64EncodedSize(int origDataSize)
-{
-	// Number of blocks in 6-bit units (rounded up in 6-bit units)
-	int32_t numBlocks6 = ((origDataSize * 8) + 5) / 6;
-	// Number of blocks in units of 4 characters (rounded up in units of 4 characters)
-	int32_t numBlocks4 = (numBlocks6 + 3) / 4;
-	// Number of characters without line breaks
-	int32_t numNetChars = numBlocks4 * 4;
-	// Size considering line breaks every 76 characters (line breaks are "\ r \ n")
-	return numNetChars;
-}
-
-esp_err_t Image2Base64(camera_fb_t g_image_buf, size_t base64_buffer_len, uint8_t * base64_buffer)
-{
-	// Convert from JPEG to BASE64
-	size_t encord_len;
-	mbedtls_base64_encode(base64_buffer, base64_buffer_len, &encord_len, g_image_buf.buf, g_image_buf.len);
-#ifdef LOG_DEBUG
-	ESP_LOGI(TAG, "mbedtls_base64_encode: encord_len=%d", encord_len);
-#endif
-	return ESP_OK;
-}
-
 // Handle requirements when receiving from WS client
 esp_err_t handle_ws_req(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
@@ -161,38 +129,13 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 	ESP_LOGI(TAG, "Packet fragmented: %d", ws_pkt.fragmented);
 	ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
 #endif
-    while(true) {
-		// Get Image size
-		xSemaphoreTake(g_handle_image, portMAX_DELAY);
-#ifdef CAL_TIME
-		start1 = clock();
-#endif
-		// Get Base64 size
-		int32_t base64Size = calcBase64EncodedSize(g_image.len);
-#ifdef LOG_DEBUG
-		ESP_LOGI(TAG, "base64Size=%"PRIi32, base64Size);
-#endif
-		// Allocate Base64 buffer
-		// You have to use calloc. It doesn't work with malloc.
-		uint8_t *base64_buffer = NULL;
-		size_t base64_buffer_len = base64Size + 1;
-		base64_buffer = calloc(1, base64_buffer_len);
-		if (base64_buffer == NULL) {
-			ESP_LOGE(TAG, "calloc fail. base64_buffer_len %d", base64_buffer_len);
-			return ESP_FAIL;
-		}
-		memset(base64_buffer, 0, base64_buffer_len);
 
-		// Convert from Image to Base64
-		ret = Image2Base64(g_image, base64_buffer_len, base64_buffer);
-#ifdef LOG_DEBUG
-		ESP_LOGI(TAG, "Image2Base64=%d", ret);
-#endif
-		if (ret != ESP_OK) {
-			free(base64_buffer);
-			return ret;
-		}
-		// Send by WebSocket
+    while(true) 
+    {
+		// Take mutex
+		xSemaphoreTake(g_handle_image, portMAX_DELAY);
+
+		//store value to ws_pkt
 		ws_pkt.payload = g_image.buf;
 		ws_pkt.len = g_image.len;
 		ws_pkt.type = HTTPD_WS_TYPE_BINARY;
@@ -202,25 +145,16 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 		ESP_LOGI(TAG, "Packet ws_pkt.fragmented: %d", ws_pkt.fragmented);
 		ESP_LOGI(TAG, "Packet ws_pkt.final: %d", ws_pkt.final);
 #endif
-#ifdef CAL_TIME_SEND
-		start2 = clock();
-#endif
+        // Send to WebSocket
 		ret = httpd_ws_send_frame(req, &ws_pkt);
 		if (ret != ESP_OK) {
 			ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
 		}
-#ifdef CAL_TIME_SEND
-		end2 = clock();
-		double time_taken = ((double)(end2 - start2))/CLOCKS_PER_SEC; // in seconds
-		ESP_LOGI(TAG, "took %f mseconds to execute",time_taken*1000);
-#endif
-		free(base64_buffer);
-#ifdef CAL_TIME
-		end1 = clock();
-		double time_taken = ((double)(end1 - start1))/CLOCKS_PER_SEC; // in seconds
-		ESP_LOGI(TAG, "WS: took %f mseconds to execute",time_taken*1000);
-#endif
+
+        //Give mutex
 		xSemaphoreGive(g_handle_image);
+
+        //Switch to other task
 		vTaskDelay(pdMS_TO_TICKS(2000));
 	}
 	return ret;
@@ -259,6 +193,7 @@ void app_main() {
 
     // Connect to wifi
     connect_wifi(ssid, password);
+
 	// Initialize camera
 	err = init_camera();
 	if (err != ESP_OK) {
@@ -278,14 +213,11 @@ void app_main() {
 	// Start web server
 	setup_server();
 	ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
-
-	size_t _jpg_buf_len;
-    uint8_t* _jpg_buf;
-	while (true) {
+	
+    while (true) 
+    {
+        //Take mutex
 		xSemaphoreTake(g_handle_image, portMAX_DELAY);
-#ifdef CAL_TIME
-		start = clock();
-#endif
 		// Save Picture to Local file
 		camera_fb_t * fb = esp_camera_fb_get();
 		if (!fb) {
@@ -293,42 +225,23 @@ void app_main() {
 			break;
 		}
 		ESP_LOGI(TAG, "Picture format=%d",fb->format);
-		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
 
-		// // Convert to jpeg if needed
-        // if(fb->format != PIXFORMAT_JPEG) {
-        //     bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-        //     if(!jpeg_converted) {
-        //         ESP_LOGE(TAG, "JPEG compression failed");
-		// 		// break;
-        //     }
-        // }
-        // else {
-        //     _jpg_buf_len = fb->len;
-        //     _jpg_buf = fb->buf;
-        // }
-		// ESP_LOGI(TAG, "Convert format=%d",fb->format);
-		g_image = *fb;
-		// g_image.buf = _jpg_buf;
-		// g_image.len = _jpg_buf_len;
-		// Free captured data
-        // if(fb->format != PIXFORMAT_JPEG){
-        //     free(_jpg_buf);
-        // }
+        //Detect face
+		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
+		
+        //Store data to g_image
+        g_image = *fb;
 
 #ifdef LOG_DEBUG
 		ESP_LOGI(TAG, "pictureSize=%d",g_image.len);
-		// ESP_LOGI(TAG, "pictureSize=%s",g_image.buf);
-		// ESP_LOGI(TAG, "pictureSize=%d",g_image.width);
 #endif
 		//return the frame buffer back to the driver for reuse
 		esp_camera_fb_return(fb);
-#ifdef CAL_TIME
-		end = clock();
-		double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
-		ESP_LOGI(TAG, "MAIN: took %f mseconds to execute",time_taken*1000);
-#endif
+
+        //Give mutex
 		xSemaphoreGive(g_handle_image);
-		vTaskDelay(pdMS_TO_TICKS(500));
+		
+        //Switch to other task
+        vTaskDelay(pdMS_TO_TICKS(500));
 	}
 }
