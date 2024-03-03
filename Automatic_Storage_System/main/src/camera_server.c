@@ -18,8 +18,10 @@
 #include <time.h>
 clock_t start, end;
 // #define LOG_DEBUG
+#define LOG_DEBUG_DETECT
 
-
+static uint8_t detect_send[] = "face_detect";
+size_t detect_send_len = sizeof(detect_send);
 #define LED_GPIO_PIN 4 // GPIO 4 for the onboard LED
 SemaphoreHandle_t g_handle_image = NULL;
 camera_fb_t g_image;
@@ -145,12 +147,28 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 			ESP_LOGE(TAG, "Camera Capture Failed");
 			break;
 		}
-#ifdef LOG_DEBUG
-		ESP_LOGI(TAG, "Picture format=%d",fb->format);
-#endif
         //Detect face
-		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
-		//store value to ws_pkt
+		bool detect = inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
+		
+        if (true == detect)
+        {
+            ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+            ws_pkt.payload = detect_send;
+            ws_pkt.len = detect_send_len;
+#ifdef LOG_DEBUG_DETECT
+            ESP_LOGI(TAG, "detect ws_pkt.len: %d", ws_pkt.len);
+            ESP_LOGI(TAG, "detect ws_pkt.type: %d", ws_pkt.type);
+            ESP_LOGI(TAG, "detect ws_pkt.payload: %s", ws_pkt.payload);
+#endif
+            ret = httpd_ws_send_frame(req, &ws_pkt);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+                return ret;
+            }
+            vTaskDelay(pdMS_TO_TICKS(15));
+        }
+
+        //store value to ws_pkt
 		ws_pkt.payload = fb->buf;
 		ws_pkt.len = fb->len;
 		ws_pkt.type = HTTPD_WS_TYPE_BINARY;
@@ -161,15 +179,15 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 		ESP_LOGI(TAG, "Packet ws_pkt.final: %d", ws_pkt.final);
 #endif
         esp_camera_fb_return(fb);
-        // start = clock();
+
         // Send to WebSocket
 		ret = httpd_ws_send_frame(req, &ws_pkt);
 		if (ret != ESP_OK) {
 			ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+            return ret;
 		}
-        // end = clock();
-		// double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
-		// ESP_LOGI(TAG1, "took %f mseconds to execute",time_taken*1000);
+
+        
         //Give mutex
 		// xSemaphoreGive(g_handle_image);
 

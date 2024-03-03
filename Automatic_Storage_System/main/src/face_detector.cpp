@@ -49,7 +49,7 @@ extern "C" {
         }
     }
 
-    void inference_face_detection(uint16_t *image_data, int width, int height, int channels) {
+    bool inference_face_detection(uint16_t *image_data, int width, int height, int channels) {
         std::list<dl::detect::result_t> results = detector.infer<uint16_t>(image_data, {height, width, channels});
 
         int i = 0;
@@ -62,7 +62,8 @@ extern "C" {
                                   DL_MAX(prediction->box[2], 0),
                                   DL_MAX(prediction->box[3], 0),
                                   0b1110000000000111);
-            break;
+            return true;
         }
+        return false;
     }
 }

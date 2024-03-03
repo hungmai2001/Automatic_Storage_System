@@ -46,6 +46,7 @@
     // https://qiita.com/magiclib/items/3aab45b6701cb973e896
     var web_socket = null;
     var giu_do = 1;
+    var face_detect = false;
     function on_load()
     {
       document.getElementById('take').style.display = 'none';
@@ -84,21 +85,29 @@
 
     function on_message(recv_data)
     {
-      // const startTime = new Date().getTime(); 
-      // console.log("on_message");
       // console.log(recv_data.data);
       // console.log(typeof(recv_data.data));
-      // console.log(recv_data.data.length);
-      if (1 == giu_do) {
-        // if (recv_data.data.length > 2) {
+      // console.log(recv_data.data.byteLength);
+
+      if ( (1 == giu_do) ) {
+        if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) {
           // console.log(typeof(recv_data.data));
           var recv_image_data = new Uint8Array(recv_data.data);
           // console.log(recv_image_data);
           displayImage(recv_image_data);
-        // }
-        // else {
-        //   /* Do nothing */
-        // }
+        }
+        else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) {
+          console.log("receive image");
+          saveImage(recv_image_data);
+          console.log(recv_data.data);
+          console.log(typeof(recv_data.data));
+          console.log(recv_data.data.byteLength);
+          face_detect = false;
+        }
+        else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) {
+          console.log("start face image");
+          face_detect = true;
+        }
       }
       else {
         /* Do nothing */
@@ -124,7 +133,6 @@
       const imgData = ctx.createImageData(xres, yres);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let ln = 0;
-
       // Duyệt qua từng hàng và cột của hình ảnh
       for (let y = 0; y < yres; y++) {
           for (let x = 0; x < xres; x++) {
@@ -146,9 +154,72 @@
 
       // Hiển thị hình ảnh trên canvas
       ctx.putImageData(imgData, 0, 0);
-
-      // Thêm canvas vào body (hoặc bất kỳ phần tử HTML nào bạn muốn hiển thị)
-      // document.body.appendChild(canvas);
     }
+
+    async function saveImage(pixels) {
+      // Kích thước hình ảnh
+      const xres = 160;
+      const yres = 120;
+      
+      // Tạo canvas và lấy context
+      const canvas = document.getElementById('canvas_image');
+      const scale = 3;
+      canvas.width = xres*scale;
+      canvas.height = yres*scale;
+      const ctx = canvas.getContext('2d');
+
+      // Tạo một ImageData object để quản lý dữ liệu hình ảnh
+      const imgData = ctx.createImageData(xres, yres);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let ln = 0;
+      // Duyệt qua từng hàng và cột của hình ảnh
+      for (let y = 0; y < yres; y++) {
+          for (let x = 0; x < xres; x++) {
+              // Tính toán chỉ số pixel trong mảng pixels
+              const i = (y * xres + x) << 1;
+
+              // Chuyển đổi từ raw data sang định dạng hình ảnh
+              const pixel16 = (0xffff & pixels[i + 1]) | ((0xffff & pixels[i]) << 8);
+
+              // Chuyển đổi màu
+              imgData.data[ln + 0] = ((pixel16 >> 8) & 0xF8);   // Red
+              imgData.data[ln + 1] = ((pixel16 >> 3) & 0xFC);   // Green
+              imgData.data[ln + 2] = ((pixel16 << 3) & 0xF8);   // Blue
+              imgData.data[ln + 3] = 255; // Alpha channel, có thể điều chỉnh nếu cần
+
+              ln += 4; // Di chuyển đến pixel tiếp theo trong imgData
+          }
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      // Tạo một Blob từ dữ liệu của canvas
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('Không thể tạo Blob từ canvas'));
+            return;
+          }
+
+          // Tạo một URL đặc biệt cho Blob
+          const url = URL.createObjectURL(blob);
+
+          // Tạo một thẻ <a> để tạo và tải xuống file
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'image.png';
+          document.body.appendChild(a);
+
+          // Kích hoạt sự kiện click trên thẻ <a> để tải xuống file
+          a.click();
+
+          // Xóa thẻ <a> và giải phóng URL
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          resolve();
+        }, 'image/png'); // Định dạng hình ảnh mong muốn (ở đây là PNG)
+      });
+    }
+
   </script>
 </html>
