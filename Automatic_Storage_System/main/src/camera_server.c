@@ -31,7 +31,7 @@ static const char *TAG1 = "IMAGE_WEBSOCKET";
 static const char *TAG2 = "SIGNAL_WEBSOCKET";
 static int camera_w = 0;
 static int camera_h = 0;
-esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face);
+esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face, bool * fir_cap);
 // Store wi-fi credentials
 char ssid[32] = "Trinh";
 char password[64] = "0333755401 ";
@@ -140,11 +140,12 @@ esp_err_t handle_ws_req(httpd_req_t *req)
 	ESP_LOGI(TAG1, "Packet type: %d", ws_pkt.type);
 #endif
     if ( strcmp((char*)ws_pkt.payload,"capture") == 0 )
-    {
+    {   
+        bool first_cap = true;
         uint8_t count_face = 0;
         while( (ret == ESP_OK) && (count_face <= COUNT_DETECT) )
         {
-            ret = image_process(req, &ws_pkt, &count_face);
+            ret = image_process(req, &ws_pkt, &count_face, &first_cap);
             //Switch to other task
             vTaskDelay(pdMS_TO_TICKS(20));
         }
@@ -208,14 +209,26 @@ void app_main() {
 }
 
 
-esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face)
+esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face, bool * fir_cap)
 {
     esp_err_t ret = ESP_OK;
-    camera_fb_t * fb = esp_camera_fb_get();
-    if (!fb) {
-        ESP_LOGE(TAG1, "Camera Capture Failed");
-        return ESP_FAIL;
+    //clear internal queue
+    if ( *fir_cap == true)
+    {
+        for( int i = 0; i < 2 ;i++ ) {
+            camera_fb_t * fb = esp_camera_fb_get();
+            ESP_LOGI(TAG1, "fb->len=%d", fb->len);
+            esp_camera_fb_return(fb);
+        }
     }
+    *fir_cap = false;
+	//acquire a frame
+	camera_fb_t * fb = esp_camera_fb_get();
+	if (!fb) {
+		ESP_LOGE(TAG1, "Camera Capture Failed");
+		return ESP_FAIL;
+	}
+    
     //Detect face
     bool detect = false;
     if (*count_face == COUNT_DETECT)
@@ -228,8 +241,8 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_
     //count face
     if ( (true == detect) && (*count_face < COUNT_DETECT) )
     {
-        *count_face += 1;
         ESP_LOGI(TAG1, "count_face %d", *count_face);
+        *count_face += 1;
     }
     else if ( (true == detect) && (*count_face == COUNT_DETECT) )
     {
@@ -247,6 +260,7 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_
             ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
             return ret;
         }
+        memset(pkt, 0, sizeof(httpd_ws_frame_t));
         *count_face += 1;
         vTaskDelay(pdMS_TO_TICKS(20));
     }
@@ -273,5 +287,6 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_
         ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
         return ret;
     }
+    memset(pkt, 0, sizeof(httpd_ws_frame_t));
     return ESP_OK;
 }

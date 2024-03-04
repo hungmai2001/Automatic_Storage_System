@@ -31,8 +31,8 @@
       <input type="text" id="connect_input" name="connect_input" value="esp32-camera.local">
     </div>
     <div id="take">
-      <input type="button" value="GIỮ ĐỒ" onclick="on_take_picture();">
-      <input type="button" value="LẤY ĐỒ" onclick="on_take_picture_1();">
+      <input type="button" value="GIỮ ĐỒ" onclick="on_take_picture();" id="store">
+      <input type="button" value="LẤY ĐỒ" onclick="on_take_picture_1();" id="get">
     </div>
     <div id="fail">
       Server connection fail.
@@ -43,10 +43,10 @@
   </body>
 
   <script>
-    // https://qiita.com/magiclib/items/3aab45b6701cb973e896
     var web_socket = null;
     var giu_do = 1;
     var face_detect = false;
+    const displayMessageTimeout = 10000;
     function on_load()
     {
       document.getElementById('take').style.display = 'none';
@@ -82,36 +82,54 @@
       document.getElementById('take').style.display = 'none';
       document.getElementById('fail').style.display = 'inline';
     }
-
+    function on_close_connection() {
+    if (web_socket !== null) {
+        web_socket.close();
+        web_socket = null;
+        // Additional cleanup or actions after closing the WebSocket
+      }
+    }
     function on_message(recv_data)
     {
       // console.log(recv_data.data);
       // console.log(typeof(recv_data.data));
       // console.log(recv_data.data.byteLength);
 
-      if ( (1 == giu_do) ) {
-        if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) {
+      if ( (1 == giu_do) )
+      {
+        document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+        document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+        if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) 
+        {
           // console.log(typeof(recv_data.data));
           var recv_image_data = new Uint8Array(recv_data.data);
           // console.log(recv_image_data);
           displayImage(recv_image_data);
         }
-        else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) {
+        else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) 
+        {
           console.log("receive image");
           console.log(recv_data.data);
           console.log(typeof(recv_data.data));
           console.log(recv_data.data.byteLength);
           var recv_image_data = new Uint8Array(recv_data.data);
           saveImage(recv_image_data);
-          
+          clearCanvas();
+          displayMessage("Thông tin của bạn đã được lưu trữ", displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
           face_detect = false;
         }
-        else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) {
+        else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) 
+        {
           console.log("start face image");
           face_detect = true;
         }
       }
-      else {
+      else 
+      {
         /* Do nothing */
       }
       // const endTime = new Date().getTime();
@@ -119,6 +137,31 @@
       // console.log("Function took " + timeTaken + " milliseconds");
     }
 
+    function clearCanvas()
+    {
+        var canvas = document.getElementById('canvas_image');
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function displayMessage(message, timeout)
+    {
+        var messageElement = document.createElement('div');
+        messageElement.style.fontSize = '20px';
+        messageElement.style.fontWeight = 'bold';
+        messageElement.style.color = 'green';
+        messageElement.style.position = 'fixed';
+        messageElement.style.top = '50%';
+        messageElement.style.left = '50%';
+        messageElement.style.transform = 'translate(-50%, -50%)';
+        messageElement.innerHTML = message;
+
+        document.body.appendChild(messageElement);
+
+        setTimeout(() => {
+            document.body.removeChild(messageElement);
+        }, timeout);
+    }
     async function displayImage(pixels) {
       // Kích thước hình ảnh
       const xres = 160;
