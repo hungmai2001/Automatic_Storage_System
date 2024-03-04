@@ -98,10 +98,12 @@
         }
         else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) {
           console.log("receive image");
-          saveImage(recv_image_data);
           console.log(recv_data.data);
           console.log(typeof(recv_data.data));
           console.log(recv_data.data.byteLength);
+          var recv_image_data = new Uint8Array(recv_data.data);
+          saveImage(recv_image_data);
+          
           face_detect = false;
         }
         else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) {
@@ -124,7 +126,7 @@
       
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
-      const scale = 3;
+      const scale = 2;
       canvas.width = xres*scale;
       canvas.height = yres*scale;
       const ctx = canvas.getContext('2d');
@@ -163,7 +165,7 @@
       
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
-      const scale = 3;
+      const scale = 2;
       canvas.width = xres*scale;
       canvas.height = yres*scale;
       const ctx = canvas.getContext('2d');

@@ -19,7 +19,7 @@
 clock_t start, end;
 // #define LOG_DEBUG
 #define LOG_DEBUG_DETECT
-
+#define COUNT_DETECT 4
 static uint8_t detect_send[] = "face_detect";
 size_t detect_send_len = sizeof(detect_send);
 #define LED_GPIO_PIN 4 // GPIO 4 for the onboard LED
@@ -27,7 +27,8 @@ SemaphoreHandle_t g_handle_image = NULL;
 camera_fb_t g_image;
 
 static const char *TAG = "camera_server";
-static const char *TAG1 = "=============HANDLE_WS";
+static const char *TAG1 = "IMAGE_WEBSOCKET";
+static const char *TAG2 = "SIGNAL_WEBSOCKET";
 static int camera_w = 0;
 static int camera_h = 0;
 
@@ -55,14 +56,14 @@ static esp_err_t init_camera(void) {
         .pin_href = CAM_PIN_HREF,
         .pin_pclk = CAM_PIN_PCLK,
 
-        .xclk_freq_hz = 20000000,
+        .xclk_freq_hz = 10000000,
         .ledc_timer = LEDC_TIMER_0,
         .ledc_channel = LEDC_CHANNEL_0,
 
         .pixel_format = PIXFORMAT_RGB565,
         .frame_size = FRAMESIZE_QQVGA,
 
-        .jpeg_quality = 12,
+        .jpeg_quality = 17,
         .fb_count = 2,
         .fb_location = CAMERA_FB_IN_PSRAM,
         .grab_mode = CAMERA_GRAB_WHEN_EMPTY
@@ -97,12 +98,13 @@ esp_err_t init_pins(void) {
 }
 
 // Handle requirements when receiving from WS client
-esp_err_t handle_ws_req(httpd_req_t *req) {
+esp_err_t handle_ws_req(httpd_req_t *req)
+{
     if (req->method == HTTP_GET) {
-        ESP_LOGI(TAG, "Handshake done, the new connection was opened");
+        ESP_LOGI(TAG1, "Handshake done, the new connection was opened");
         return ESP_OK;
     }
-    ESP_LOGI(TAG, "Received data from websocket");
+    ESP_LOGI(TAG1, "Received data from websocket");
 
     httpd_ws_frame_t ws_pkt;
     uint8_t *buf = NULL;
@@ -111,61 +113,79 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
     /* Set max_len = 0 to get the frame len */
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "httpd_ws_recv_frame failed to get frame len with %d", ret);
+        ESP_LOGE(TAG1, "httpd_ws_recv_frame failed to get frame len with %d", ret);
         return ret;
     }
-    ESP_LOGI(TAG, "frame len is %d", ws_pkt.len);
+    ESP_LOGI(TAG1, "frame len is %d", ws_pkt.len);
     if (ws_pkt.len) {
         /* ws_pkt.len + 1 is for NULL termination as we are expecting a string */
         buf = calloc(1, ws_pkt.len + 1);
         if (buf == NULL) {
-            ESP_LOGE(TAG, "Failed to calloc memory for buf");
+            ESP_LOGE(TAG1, "Failed to calloc memory for buf");
             return ESP_ERR_NO_MEM;
         }
         ws_pkt.payload = buf;
         /* Set max_len = ws_pkt.len to get the frame payload */
         ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
+            ESP_LOGE(TAG1, "httpd_ws_recv_frame failed with %d", ret);
             free(buf);
             return ret;
         }
-        ESP_LOGI(TAG, "Got packet with message: %s", ws_pkt.payload);
+        ESP_LOGI(TAG1, "Got packet with message: %s", ws_pkt.payload);
     }
 #ifdef LOG_DEBUG
-	ESP_LOGI(TAG, "Packet final: %d", ws_pkt.final);
-	ESP_LOGI(TAG, "Packet fragmented: %d", ws_pkt.fragmented);
-	ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
+	ESP_LOGI(TAG1, "Packet final: %d", ws_pkt.final);
+	ESP_LOGI(TAG1, "Packet fragmented: %d", ws_pkt.fragmented);
+	ESP_LOGI(TAG1, "Packet type: %d", ws_pkt.type);
 #endif
-
+    uint8_t count_face = 0;
     while(true) 
     {
 		// Take mutex
 		// xSemaphoreTake(g_handle_image, portMAX_DELAY);
         camera_fb_t * fb = esp_camera_fb_get();
 		if (!fb) {
-			ESP_LOGE(TAG, "Camera Capture Failed");
+			ESP_LOGE(TAG1, "Camera Capture Failed");
 			break;
 		}
         //Detect face
-		bool detect = inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
-		
-        if (true == detect)
+		bool detect = false;
+        if (count_face == COUNT_DETECT)
         {
+            detect = face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
+        }
+        else
+            detect = inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
+
+        //count face
+        if ( (true == detect) && (count_face < COUNT_DETECT) )
+        {
+            count_face++;
+            ESP_LOGI(TAG1, "count_face %d", count_face);
+        }
+        else if ( (true == detect) && (count_face == COUNT_DETECT) )
+        {
+            ESP_LOGI(TAG1, "count_face %d", count_face);
             ws_pkt.type = HTTPD_WS_TYPE_TEXT;
             ws_pkt.payload = detect_send;
             ws_pkt.len = detect_send_len;
 #ifdef LOG_DEBUG_DETECT
-            ESP_LOGI(TAG, "detect ws_pkt.len: %d", ws_pkt.len);
-            ESP_LOGI(TAG, "detect ws_pkt.type: %d", ws_pkt.type);
-            ESP_LOGI(TAG, "detect ws_pkt.payload: %s", ws_pkt.payload);
+            ESP_LOGI(TAG1, "detect ws_pkt.len: %d", ws_pkt.len);
+            ESP_LOGI(TAG1, "detect ws_pkt.type: %d", ws_pkt.type);
+            ESP_LOGI(TAG1, "detect ws_pkt.payload: %s", ws_pkt.payload);
 #endif
             ret = httpd_ws_send_frame(req, &ws_pkt);
             if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+                ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
                 return ret;
             }
-            vTaskDelay(pdMS_TO_TICKS(15));
+            count_face++;
+            vTaskDelay(pdMS_TO_TICKS(20));
+        }
+        else
+        {
+            count_face = 0;
         }
 
         //store value to ws_pkt
@@ -173,17 +193,17 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 		ws_pkt.len = fb->len;
 		ws_pkt.type = HTTPD_WS_TYPE_BINARY;
 #ifdef LOG_DEBUG
-		ESP_LOGI(TAG, "Packet ws_pkt.len: %d", ws_pkt.len);
-		ESP_LOGI(TAG, "Packet ws_pkt.type: %d", ws_pkt.type);
-		ESP_LOGI(TAG, "Packet ws_pkt.fragmented: %d", ws_pkt.fragmented);
-		ESP_LOGI(TAG, "Packet ws_pkt.final: %d", ws_pkt.final);
+		ESP_LOGI(TAG1, "Packet ws_pkt.len: %d", ws_pkt.len);
+		ESP_LOGI(TAG1, "Packet ws_pkt.type: %d", ws_pkt.type);
+		ESP_LOGI(TAG1, "Packet ws_pkt.fragmented: %d", ws_pkt.fragmented);
+		ESP_LOGI(TAG1, "Packet ws_pkt.final: %d", ws_pkt.final);
 #endif
         esp_camera_fb_return(fb);
 
         // Send to WebSocket
 		ret = httpd_ws_send_frame(req, &ws_pkt);
 		if (ret != ESP_OK) {
-			ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+			ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
             return ret;
 		}
 
@@ -192,7 +212,7 @@ esp_err_t handle_ws_req(httpd_req_t *req) {
 		// xSemaphoreGive(g_handle_image);
 
         //Switch to other task
-		vTaskDelay(pdMS_TO_TICKS(15));
+		vTaskDelay(pdMS_TO_TICKS(20));
 	}
 	return ret;
 }
@@ -250,39 +270,4 @@ void app_main() {
 	// Start web server
 	setup_server();
 	ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
-	
-    while (false) 
-    {
-        //Take mutex
-		xSemaphoreTake(g_handle_image, portMAX_DELAY);
-        	start = clock();
-		// Save Picture to Local file
-		camera_fb_t * fb = esp_camera_fb_get();
-		if (!fb) {
-			ESP_LOGE(TAG, "Camera Capture Failed");
-			break;
-		}
-#ifdef LOG_DEBUG
-		ESP_LOGI(TAG, "Picture format=%d",fb->format);
-#endif
-        //Detect face
-		inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
-		
-        //Store data to g_image
-        g_image = *fb;
-
-#ifdef LOG_DEBUG
-		ESP_LOGI(TAG, "pictureSize=%d",g_image.len);
-#endif
-		//return the frame buffer back to the driver for reuse
-		esp_camera_fb_return(fb);
-        end = clock();
-		double time_taken = ((double)(end - start))/CLOCKS_PER_SEC; // in seconds
-		ESP_LOGI(TAG, "MAIN: took %f mseconds to execute",time_taken*1000);
-        //Give mutex
-		xSemaphoreGive(g_handle_image);
-		
-        //Switch to other task
-        // vTaskDelay(pdMS_TO_TICKS(10));
-	}
 }

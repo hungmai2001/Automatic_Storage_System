@@ -66,4 +66,14 @@ extern "C" {
         }
         return false;
     }
+    bool face_detection(uint16_t *image_data, int width, int height, int channels) {
+        std::list<dl::detect::result_t> results = detector.infer<uint16_t>(image_data, {height, width, channels});
+
+        int i = 0;
+        for (std::list<dl::detect::result_t>::iterator prediction = results.begin(); prediction != results.end(); prediction++, i++) {
+            ESP_LOGI(TAG,"Face detection.");
+            return true;
+        }
+        return false;
+    }
 }
