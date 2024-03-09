@@ -6,6 +6,10 @@
         "board/esp32-wrover-kit-3.3v.cfg"
     ],
     "files.associations": {
-        "vector": "cpp"
+        "vector": "cpp",
+        "xlocmon": "c",
+        "time.h": "c",
+        "wifi_connection.h": "c",
+        "camera_pins.h": "c"
     }
 }

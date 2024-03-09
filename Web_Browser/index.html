@@ -31,8 +31,8 @@
       <input type="text" id="connect_input" name="connect_input" value="esp32-camera.local">
     </div>
     <div id="take">
-      <input type="button" value="GIỮ ĐỒ" onclick="on_take_picture();" id="store">
-      <input type="button" value="LẤY ĐỒ" onclick="on_take_picture_1();" id="get">
+      <input type="button" value="GIỮ ĐỒ" onclick="on_store_item();" id="store">
+      <input type="button" value="LẤY ĐỒ" onclick="on_get_item();" id="get">
     </div>
     <div id="fail">
       Server connection fail.
@@ -44,34 +44,70 @@
 
   <script>
     var web_socket = null;
-    var giu_do = 1;
+    var store_item = false;
+    var get_item = false;
     var face_detect = false;
-    const displayMessageTimeout = 10000;
+    var status_ = false;
+    const displayMessageTimeout = 5000;
+    const receiveMessageTimeout = 20000;
+    var globalMessageElement;
+
     function on_load()
     {
       document.getElementById('take').style.display = 'none';
       document.getElementById('fail').style.display = 'none';
+      console.log("on_load");
+    }
+
+    function on_close(event)
+    {
+      console.log("on_close_connection");
+      // Kiểm tra xem có thể thực hiện kết nối lại hay không
+      if (event.wasClean) {
+        console.log(`Kết nối đã đóng clean, mã: ${event.code}, lý do: ${event.reason}`);
+      } else {
+        console.error('Kết nối đã bị đóng không mong muốn');
+      }
+      // Thực hiện kết nối lại sau một khoảng thời gian (ví dụ: sau 3 giây)
+      setTimeout(connectWebSocket, 1000);
+    }
+
+    function on_open()
+    {
+      console.log("on_open_connection");
+      // setTimeout(connectWebSocket, 3000);
+    }
+
+    function connectWebSocket()
+    {
+      var text = document.getElementById('connect_input');
+      var connection = "ws://" + text.value + ":80/ws";
+      web_socket = new WebSocket(connection);
+      web_socket.binaryType = 'arraybuffer';
+      web_socket.onmessage = on_message;
+      web_socket.onopen = on_open;
+      web_socket.onerror = on_error;
+      web_socket.onclose = on_close;  // Thêm sự kiện xử lý khi kết nối đóng
     }
 
     function on_connect_server()
     {
-      var text = document.getElementById('connect_input');
-      console.log(text.value);
-      var connection = "ws://" + text.value + ":80/ws";
-      console.log(connection);
-
-      //web_socket = new WebSocket('ws://192.168.10.161:80/ws'); // Specify server address
-      web_socket = new WebSocket(connection);
-      web_socket.binaryType = 'arraybuffer';
-      web_socket.onmessage = on_message;
-      web_socket.onerror = on_error;
       document.getElementById('take').style.display = 'inline';
       document.getElementById('connect').style.display = 'none';
-    };
+      connectWebSocket();  // Gọi hàm để kết nối WebSocket
+      console.log("on_connect_server");
+    }
 
-    function on_take_picture()
+    function on_store_item()
     {
-      giu_do = 1;
+      store_item = true;
+      var text_input = "capture";
+      web_socket.send(text_input);
+    }
+
+    function on_get_item()
+    {
+      get_item = true;
       var text_input = "capture";
       web_socket.send(text_input);
     }
@@ -82,45 +118,44 @@
       document.getElementById('take').style.display = 'none';
       document.getElementById('fail').style.display = 'inline';
     }
+
     function on_close_connection() {
-    if (web_socket !== null) {
-        web_socket.close();
-        web_socket = null;
-        // Additional cleanup or actions after closing the WebSocket
-      }
+      console.log("on_close_connection");
+      if (web_socket !== null) {
+          web_socket.close();
+          web_socket = null;
+        }
     }
+
     function on_message(recv_data)
     {
       // console.log(recv_data.data);
-      // console.log(typeof(recv_data.data));
-      // console.log(recv_data.data.byteLength);
-
-      if ( (1 == giu_do) )
+      //Get image with "Giữ Đồ" option, display it and save image if the face is detected
+      if (true == store_item)
       {
         document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
         document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
         if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) 
         {
-          // console.log(typeof(recv_data.data));
           var recv_image_data = new Uint8Array(recv_data.data);
-          // console.log(recv_image_data);
           displayImage(recv_image_data);
         }
         else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) 
         {
-          console.log("receive image");
-          console.log(recv_data.data);
-          console.log(typeof(recv_data.data));
-          console.log(recv_data.data.byteLength);
+          // console.log("receive image");
+          // console.log(recv_data.data);
+          // console.log(typeof(recv_data.data));
+          // console.log(recv_data.data.byteLength);
           var recv_image_data = new Uint8Array(recv_data.data);
-          saveImage(recv_image_data);
+          saveImage(recv_image_data, "image_store.png");
           clearCanvas();
-          displayMessage("Thông tin của bạn đã được lưu trữ", displayMessageTimeout);
+          displayMessage("Thông tin của bạn đã được lưu trữ", 0, displayMessageTimeout, 0);
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
           }, displayMessageTimeout);
           face_detect = false;
+          store_item = false;
         }
         else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) 
         {
@@ -128,13 +163,68 @@
           face_detect = true;
         }
       }
-      else 
+      //Get image with "Lấy Đồ" option, display it and save image if the face is detected
+      else if ( (true == get_item) && (false == status_) )
       {
-        /* Do nothing */
+        // console.log("receive image 1");
+        document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+        document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+        if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) 
+        {
+          var recv_image_data = new Uint8Array(recv_data.data);
+          displayImage(recv_image_data);
+        }
+        else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) 
+        {
+          // console.log("receive image");
+          // console.log(recv_data.data);
+          // console.log(typeof(recv_data.data));
+          // console.log(recv_data.data.byteLength);
+          var recv_image_data = new Uint8Array(recv_data.data);
+          saveImage(recv_image_data, "image_get.png");
+          clearCanvas();
+          displayMessage_no("Thông tin của bạn đang được xử lý............", receiveMessageTimeout);
+          setTimeout(() => {
+          }, receiveMessageTimeout);
+          console.log("return displayMessage");
+          face_detect = false;
+          status_ = true;
+        }
+        else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) 
+        {
+          console.log("start face image");
+          face_detect = true;
+        }
+        else
+        {
+          console.log("===== face image");
+        }
       }
-      // const endTime = new Date().getTime();
-      // const timeTaken = endTime - startTime;
-      // console.log("Function took " + timeTaken + " milliseconds");
+
+      //Handle face comparison
+      else if ( (true == get_item) && (typeof(recv_data.data) == "string") && (true == status_) )
+      {
+        console.log("receive image 2");
+        console.log("Received data:", recv_data.data);
+        console.log("Length of data:", recv_data.data.length);
+        get_item = false;
+        status_ = false;
+        removeMessageElement();
+        var t = recv_data.data.localeCompare("face_detected");
+        console.log(t);
+        if ( t == 0)
+        {
+          displayMessage("Đã mở tủ. Kết thúc.",0, displayMessageTimeout);
+        }
+        else
+        {
+          displayMessage("Không có dữ liệu. Kết thúc.", 0, displayMessageTimeout);
+        }
+        setTimeout(() => {
+            document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+            document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+        }, displayMessageTimeout);
+      }
     }
 
     function clearCanvas()
@@ -144,99 +234,116 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function displayMessage(message, timeout)
+    function displayMessage(message, no_timeout, timeout)
     {
-        var messageElement = document.createElement('div');
-        messageElement.style.fontSize = '20px';
-        messageElement.style.fontWeight = 'bold';
-        messageElement.style.color = 'green';
-        messageElement.style.position = 'fixed';
-        messageElement.style.top = '50%';
-        messageElement.style.left = '50%';
-        messageElement.style.transform = 'translate(-50%, -50%)';
-        messageElement.innerHTML = message;
+      var messageElement = document.createElement('div');
+      messageElement.style.fontSize = '20px';
+      messageElement.style.fontWeight = 'bold';
+      messageElement.style.color = 'green';
+      messageElement.style.position = 'fixed';
+      messageElement.style.top = '50%';
+      messageElement.style.left = '50%';
+      messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.innerHTML = message;
 
-        document.body.appendChild(messageElement);
-
+      document.body.appendChild(messageElement);
+      if (no_timeout == 0)
+      {
         setTimeout(() => {
             document.body.removeChild(messageElement);
         }, timeout);
+      }
     }
-    async function displayImage(pixels) {
+    function displayMessage_no(message, timeout)
+    {
+      var messageElement = document.createElement('div');
+      messageElement.style.fontSize = '20px';
+      messageElement.style.fontWeight = 'bold';
+      messageElement.style.color = 'green';
+      messageElement.style.position = 'fixed';
+      messageElement.style.top = '50%';
+      messageElement.style.left = '50%';
+      messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.innerHTML = message;
+
+      document.body.appendChild(messageElement);
+      setTimeout(() => {
+            // document.body.removeChild(messageElement);
+            var text_input = "verify";
+            web_socket.send(text_input);
+      }, timeout);
+
+      globalMessageElement = messageElement;
+    }
+    async function displayImage(pixels)
+    {
       // Kích thước hình ảnh
       const xres = 160;
       const yres = 120;
-      
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
       const scale = 2;
       canvas.width = xres*scale;
       canvas.height = yres*scale;
       const ctx = canvas.getContext('2d');
-
       // Tạo một ImageData object để quản lý dữ liệu hình ảnh
       const imgData = ctx.createImageData(xres, yres);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let ln = 0;
       // Duyệt qua từng hàng và cột của hình ảnh
-      for (let y = 0; y < yres; y++) {
-          for (let x = 0; x < xres; x++) {
+      for (let y = 0; y < yres; y++)
+      {
+          for (let x = 0; x < xres; x++)
+          {
               // Tính toán chỉ số pixel trong mảng pixels
               const i = (y * xres + x) << 1;
-
               // Chuyển đổi từ raw data sang định dạng hình ảnh
               const pixel16 = (0xffff & pixels[i + 1]) | ((0xffff & pixels[i]) << 8);
-
               // Chuyển đổi màu
               imgData.data[ln + 0] = ((pixel16 >> 8) & 0xF8);   // Red
               imgData.data[ln + 1] = ((pixel16 >> 3) & 0xFC);   // Green
               imgData.data[ln + 2] = ((pixel16 << 3) & 0xF8);   // Blue
               imgData.data[ln + 3] = 255; // Alpha channel, có thể điều chỉnh nếu cần
-
               ln += 4; // Di chuyển đến pixel tiếp theo trong imgData
           }
       }
-
       // Hiển thị hình ảnh trên canvas
       ctx.putImageData(imgData, 0, 0);
     }
 
-    async function saveImage(pixels) {
+    async function saveImage(pixels, name_picture)
+    {
       // Kích thước hình ảnh
       const xres = 160;
       const yres = 120;
-      
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
       const scale = 2;
       canvas.width = xres*scale;
       canvas.height = yres*scale;
       const ctx = canvas.getContext('2d');
-
       // Tạo một ImageData object để quản lý dữ liệu hình ảnh
       const imgData = ctx.createImageData(xres, yres);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let ln = 0;
       // Duyệt qua từng hàng và cột của hình ảnh
-      for (let y = 0; y < yres; y++) {
-          for (let x = 0; x < xres; x++) {
+      for (let y = 0; y < yres; y++)
+      {
+          for (let x = 0; x < xres; x++)
+          {
               // Tính toán chỉ số pixel trong mảng pixels
               const i = (y * xres + x) << 1;
-
               // Chuyển đổi từ raw data sang định dạng hình ảnh
               const pixel16 = (0xffff & pixels[i + 1]) | ((0xffff & pixels[i]) << 8);
-
               // Chuyển đổi màu
               imgData.data[ln + 0] = ((pixel16 >> 8) & 0xF8);   // Red
               imgData.data[ln + 1] = ((pixel16 >> 3) & 0xFC);   // Green
               imgData.data[ln + 2] = ((pixel16 << 3) & 0xF8);   // Blue
               imgData.data[ln + 3] = 255; // Alpha channel, có thể điều chỉnh nếu cần
-
               ln += 4; // Di chuyển đến pixel tiếp theo trong imgData
           }
       }
       ctx.putImageData(imgData, 0, 0);
-
       // Tạo một Blob từ dữ liệu của canvas
       return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {
@@ -244,27 +351,28 @@
             reject(new Error('Không thể tạo Blob từ canvas'));
             return;
           }
-
           // Tạo một URL đặc biệt cho Blob
           const url = URL.createObjectURL(blob);
-
           // Tạo một thẻ <a> để tạo và tải xuống file
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'image.png';
+          a.download = name_picture;
           document.body.appendChild(a);
-
           // Kích hoạt sự kiện click trên thẻ <a> để tải xuống file
           a.click();
-
           // Xóa thẻ <a> và giải phóng URL
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-
           resolve();
-        }, 'image/png'); // Định dạng hình ảnh mong muốn (ở đây là PNG)
+        }, '/png'); // Định dạng hình ảnh mong muốn (ở đây là PNG)
       });
     }
-
+    function removeMessageElement()
+    {
+      if (globalMessageElement && globalMessageElement.parentNode) {
+        console.log("globalMessageElement");
+        globalMessageElement.parentNode.removeChild(globalMessageElement);
+      }
+    }
   </script>
 </html>

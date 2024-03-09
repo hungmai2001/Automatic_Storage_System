@@ -19,19 +19,28 @@
 clock_t start, end;
 // #define LOG_DEBUG
 #define LOG_DEBUG_DETECT
-#define COUNT_DETECT 6
+#define COUNT_DETECT 8
 static uint8_t detect_send[] = "face_detect";
 size_t detect_send_len = sizeof(detect_send);
+
+static uint8_t detected_send[] = "face_detected";
+size_t detected_send_len = sizeof(detected_send);
+static uint8_t no_detected_send[] = "no_face_detected";
+size_t no_detected_send_len = sizeof(no_detected_send);
 #define LED_GPIO_PIN 4 // GPIO 4 for the onboard LED
 SemaphoreHandle_t g_handle_image = NULL;
 camera_fb_t g_image;
-
+const char *img_get_yes = "image_get_";
+const char *img_get_no = "no_person";
+const char *verify = "verify";
+size_t len_recv_py_scripts = 0;
 static const char *TAG = "camera_server";
 static const char *TAG1 = "IMAGE_WEBSOCKET";
-static const char *TAG2 = "SIGNAL_WEBSOCKET";
+static const char *TAG2 = "IMAGE_GET";
 static int camera_w = 0;
 static int camera_h = 0;
 esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face, bool * fir_cap);
+int get_sequence_number(const char *str, const char *pattern);
 // Store wi-fi credentials
 char ssid[32] = "Trinh";
 char password[64] = "0333755401 ";
@@ -139,6 +148,7 @@ esp_err_t handle_ws_req(httpd_req_t *req)
 	ESP_LOGI(TAG1, "Packet fragmented: %d", ws_pkt.fragmented);
 	ESP_LOGI(TAG1, "Packet type: %d", ws_pkt.type);
 #endif
+    //Receive "capture" message from web browser to send image
     if ( strcmp((char*)ws_pkt.payload,"capture") == 0 )
     {   
         bool first_cap = true;
@@ -149,6 +159,56 @@ esp_err_t handle_ws_req(httpd_req_t *req)
             //Switch to other task
             vTaskDelay(pdMS_TO_TICKS(20));
         }
+    }
+    // Receive name of picture detected from python scripts
+    else if (strstr((char*)ws_pkt.payload, img_get_yes) != NULL)
+    {
+        // Sử dụng hàm get_sequence_number để lấy số thứ tự sau "img_get_"
+        int sequence_number = get_sequence_number((char*)ws_pkt.payload, img_get_yes);
+        ESP_LOGI(TAG2, "Get number: %d", sequence_number);
+        len_recv_py_scripts = detected_send_len;
+    }
+    // Receive "no_person" message from python scripts
+    else if (strstr((char*)ws_pkt.payload, img_get_no) != NULL)
+    {
+        ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+        len_recv_py_scripts = no_detected_send_len;
+    }
+    //Receive "verify" message from web browser
+    else if (strcmp((char*)ws_pkt.payload,"verify") == 0 )
+    {
+        ESP_LOGI(TAG2, "len_recv_py_scripts: %d", len_recv_py_scripts);
+        ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+        ws_pkt.final = 0;
+        ws_pkt.len = len_recv_py_scripts;
+        if ( ws_pkt.len == detected_send_len )
+        {
+            ws_pkt.payload = detected_send;
+        }
+        else if ( ws_pkt.len == no_detected_send_len )
+        {
+            ws_pkt.payload = no_detected_send;
+        }
+        else
+        {
+            ESP_LOGE(TAG2, "Haven't received message from python scripts: %d", ws_pkt.len);
+            /* Must handle additional this case */
+            return ret;
+        }
+#ifdef LOG_DEBUG_DETECT
+        ESP_LOGI(TAG2, "detected ws_pkt.type: %d", ws_pkt.type);
+        ESP_LOGI(TAG2, "detected ws_pkt.payload: %s", ws_pkt.payload);
+        ESP_LOGI(TAG2, "detected ws_pkt.final: %d", ws_pkt.final);
+        ESP_LOGI(TAG2, "detected ws_pkt.fragmented: %d", ws_pkt.fragmented);
+#endif
+        ret = httpd_ws_send_frame(req, &ws_pkt);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
+            return ret;
+        }
+        len_recv_py_scripts = 0;
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 	return ret;
 }
@@ -254,9 +314,12 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_
         ESP_LOGI(TAG1, "detect ws_pkt.len: %d", pkt->len);
         ESP_LOGI(TAG1, "detect ws_pkt.type: %d", pkt->type);
         ESP_LOGI(TAG1, "detect ws_pkt.payload: %s", pkt->payload);
+        ESP_LOGI(TAG2, "detected ws_pkt.final: %d", pkt->final);
+        ESP_LOGI(TAG2, "detected ws_pkt.fragmented: %d", pkt->fragmented);
 #endif
         ret = httpd_ws_send_frame(req, pkt);
-        if (ret != ESP_OK) {
+        if (ret != ESP_OK)
+        {
             ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
             return ret;
         }
@@ -289,4 +352,24 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_
     }
     memset(pkt, 0, sizeof(httpd_ws_frame_t));
     return ESP_OK;
+}
+
+// Get number of string
+int get_sequence_number(const char *str, const char *pattern)
+{
+    const char *number_start = strstr(str, pattern);
+    if (number_start != NULL) 
+    {
+        //Move pointer to after pattern string
+        number_start += strlen(pattern);
+        // Convert to number
+        char *endptr;
+        long number = strtol(number_start, &endptr, 10);
+        // Check status of conversion
+        if (number_start != endptr)
+        {
+            return (int)number;
+        }
+    }
+    return -1;
 }

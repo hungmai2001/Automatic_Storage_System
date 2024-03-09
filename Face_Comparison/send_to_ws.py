@@ -13,22 +13,27 @@ folder_to_check = "D:/DATN/esp32_cam_image"
 name_to_check = "image"
 # Thư mục để lưu trữ khuôn mặt cần lưu
 folder_store = "D:/DATN/esp32_cam_image/img_store"
-# Thư mục để so sánh khuôn mặt
-folder_get = "D:/DATN/esp32_cam_image/img_get"
 # Tạo thư mục nếu nó không tồn tại
 os.makedirs(folder_store, exist_ok=True)
 image_count = 0
 
 async def send_signal(signal):
     uri = "ws://192.168.1.11:80/ws"
-
-    async with websockets.connect(uri) as websocket:
-        if websocket.open:
-        # Gửi tín hiệu đến server
-            await websocket.send(signal)
-            print(f"Sent signal: {signal}")
-        else:
-            print("Failed to connect to WebSocket server.")
+    try:
+        async with websockets.connect(uri) as websocket:
+            if websocket.open:
+            # Gửi tín hiệu đến server
+                await websocket.send(signal)
+                print(f"Sent signal: {signal}")
+            else:
+                print("Failed to connect to WebSocket server.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # Đảm bảo đóng kết nối sau khi gửi xong
+        if websocket and websocket.open:
+            await websocket.close()
+        print("WebSocket connection closed.")
 
 def find_unknown_people(filename):
     
@@ -50,7 +55,7 @@ def find_unknown_people(filename):
                 print(f"count_occurrences: {count_occurrences}")
 
                 # Kiểm tra nếu có kết quả khớp trong đầu ra
-                if count_occurrences == 1:                  
+                if count_occurrences == 1:
                     # Sử dụng regex để trích xuất các số sau "name_image"
                     matches = re.findall(f'{name_image}(\d+)', result.stdout)
 
@@ -58,13 +63,20 @@ def find_unknown_people(filename):
                         base_name, extension = os.path.splitext(filename)
                         new_file_name = f"{base_name}_{match}"
                         # Gửi tín hiệu đến WebSocket ở đây
-                        print(f"Person detected in {filename}_{match}. Send signal to WebSocket.")
+                        new_file = f"{new_file_name}{extension}"
+                        print(f"Person detected in {new_file}. Send signal to WebSocket.")
                         asyncio.get_event_loop().run_until_complete(send_signal(f"{new_file_name}"))
+                        #Remove file
+                        stdout = result.stdout.replace("\n", "")
+                        new_file_remove = f"{stdout}{extension}"
+                        file_remove = os.path.join(folder_store, new_file_remove)
+                        print(f"remove file {file_remove}")
+                        os.remove(file_remove)
                 elif count_occurrences >= 1:
                     print("So many people!!!!!")
                 else:
                     print(f"No person detected in {filename}.")
-                    # Xóa tệp sau khi gửi tín hiệu
+                    asyncio.get_event_loop().run_until_complete(send_signal("no_person"))
             except subprocess.CalledProcessError as e:
                 # Lệnh thất bại, không có người nào được tìm thấy
                 print(f"Error processing {filename}: {e}")
