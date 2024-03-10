@@ -19,20 +19,16 @@ image_count = 0
 
 async def send_signal(signal):
     uri = "ws://192.168.1.11:80/ws"
+    websocket = await websockets.connect(uri)
     try:
-        async with websockets.connect(uri) as websocket:
-            if websocket.open:
-            # Gửi tín hiệu đến server
-                await websocket.send(signal)
-                print(f"Sent signal: {signal}")
-            else:
-                print("Failed to connect to WebSocket server.")
+        # Gửi tín hiệu đến server
+        await websocket.send(signal)
+        print(f"Sent signal: {signal}")
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
         # Đảm bảo đóng kết nối sau khi gửi xong
-        if websocket and websocket.open:
-            await websocket.close()
+        await websocket.close()
         print("WebSocket connection closed.")
 
 def find_unknown_people(filename):
