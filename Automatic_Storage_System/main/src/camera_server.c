@@ -266,6 +266,7 @@ void app_main() {
 	// Start web server
 	setup_server();
 	ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
+    printf("====================");
 }
 
 
