@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MQTT Subscriber</title>
+    <script src="mqttws31.js"></script>
+</head>
+<body>
+    <h1>MQTT Subscriber</h1>
+    <div id="messages"></div>
+
+    <script>
+        // Tạo một MQTT client instance
+        var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "clientId");
+
+        // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+
+        client.connect({
+            onSuccess: function () {
+                console.log("Connected to MQTT broker");
+                client.subscribe("/topic/hungmai_py_publish");
+            },
+            onFailure: function (message) {
+                console.log("Connection failed: " + message.errorMessage);
+            }
+        });
+
+        // Hàm callback được gọi khi kết nối bị mất
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                console.log("Connection lost: " + responseObject.errorMessage);
+            }
+        }
+
+        // Hàm callback được gọi khi nhận được một message mới
+        function onMessageArrived(message) {
+            console.log("Received message: " + message.payloadString);
+            var messagesDiv = document.getElementById("messages");
+            messagesDiv.innerText += message.payloadString + "\n";
+        }
+    </script>
+</body>
+</html>

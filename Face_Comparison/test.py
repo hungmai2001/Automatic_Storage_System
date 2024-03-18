@@ -40,25 +40,33 @@
 # else:
 #     print('Có lỗi xảy ra khi gửi dữ liệu:', response.status_code)
 
-import paho.mqtt.client as mqtt
+# import paho.mqtt.client as mqtt
 
-# Define callback function for when a message is received
-def on_message(client, userdata, message):
-    print("Received message:", message.payload.decode())
+# # Define callback function for when a message is received
+# def on_message(client, userdata, message):
+#     print("Received message:", message.payload.decode())
 
-# Create MQTT client instance
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+# # Create MQTT client instance
+# client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
-# Set callback function
-client.on_message = on_message
+# # Set callback function
+# client.on_message = on_message
 
-# Connect to MQTT broker
+# # Connect to MQTT broker
+# broker_address = "mqtt.eclipseprojects.io"  # Thay bằng địa chỉ broker MQTT của bạn
+# client.connect(broker_address)
+
+# # Subscribe to topic
+# topic = "/topic/qos0"  # Thay bằng tên chủ đề MQTT bạn muốn subscribe
+# client.subscribe(topic)
+
+# # Start the MQTT loop to listen for messages
+# client.loop_forever()
+
+import paho.mqtt.publish as publish
+
+# Thiết lập thông tin của broker MQTT
 broker_address = "mqtt.eclipseprojects.io"  # Thay bằng địa chỉ broker MQTT của bạn
-client.connect(broker_address)
+topic = "/topic/qos0"  # Thay bằng tên chủ đề MQTT bạn muốn gửi tin nhắn đến
 
-# Subscribe to topic
-topic = "/topic/qos0"  # Thay bằng tên chủ đề MQTT bạn muốn subscribe
-client.subscribe(topic)
 
-# Start the MQTT loop to listen for messages
-client.loop_forever()

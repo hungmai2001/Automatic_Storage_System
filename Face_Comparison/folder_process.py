@@ -74,10 +74,19 @@ def check_file_in_folder(folder_to_check, name_to_check):
     for file in files:
         if name_to_check in file:
             print(f"Name '{name_to_check}' found in the folder. Exiting.")
-            return file        
+            return file
     print(f"Name '{name_to_check}' not found in the folder.")
     return None
 
+# Xóa ảnh trong store folder
+def remove_file_in_folder(folder_store):
+    # Lấy danh sách các tệp trong thư mục
+    files = os.listdir(folder_store) 
+    for file in files:
+        filepath = os.path.join(folder_store, file)
+        os.remove(filepath)
+        print(f"{filepath} deleted.")
+    return None
 
 # Đếm số lượng tệp hình trong thư mục lưu trữ
 def count_images_in_folder(folder_store):
@@ -98,5 +107,7 @@ def move_image(file_store, folder_to_check, folder_store):
         # Di chuyển tệp đến thư mục lưu trữ
         shutil.move(filepath, destination_path)
         print(f"File {file_store} moved to {folder_store}.")
+        return destination_path
     else:
         print(f"No image in {folder_to_check}.")
+        return None

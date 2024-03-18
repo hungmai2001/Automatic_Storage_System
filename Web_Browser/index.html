@@ -24,6 +24,7 @@
             display: block; /* Đảm bảo canvas được vẽ toàn bộ kích thước của nó */
         }
     </style>
+    <script src="mqttws31.js"></script>
   </head>
   <body onload="on_load();">
     <div id="connect">
@@ -34,7 +35,7 @@
       <input type="button" value="GIỮ ĐỒ" onclick="on_store_item();" id="store">
       <input type="button" value="LẤY ĐỒ" onclick="on_get_item();" id="get">
     </div>
-    <div id="fail">
+    <div id="fail" style="display:none;">
       Server connection fail.
     </div>
     <div>
@@ -51,6 +52,59 @@
     const displayMessageTimeout = 5000;
     const receiveMessageTimeout = 10000;
     var globalMessageElement;
+    var messageToSend = "start_finger";
+    var topicToSend = "/topic/hungmai_wb_publish";
+    // Tạo một MQTT client instance
+    var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "clientId");
+    // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+
+    client.connect({
+        onSuccess: function () {
+            console.log("Connected to MQTT broker");
+            client.subscribe("/topic/hungmai_py_publish");
+        },
+        onFailure: function (message) {
+            console.log("Connection failed: " + message.errorMessage);
+        }
+    });
+
+    // Hàm callback được gọi khi kết nối bị mất
+    function onConnectionLost(responseObject) {
+        if (responseObject.errorCode !== 0) {
+          console.log("Connection lost: " + responseObject.errorMessage);
+          setTimeout(function() {
+              client.connect({
+                  onSuccess: function () {
+                      console.log("Reconnected to MQTT broker");
+                      client.subscribe("/topic/hungmai_py_publish");
+                  },
+                  onFailure: function (message) {
+                      console.log("Reconnection failed: " + message.errorMessage);
+                  }
+              });
+          }, 2000); // Thử kết nối lại sau 2 giây
+        }
+    }
+
+    // Hàm callback được gọi khi nhận được một message mới
+    function onMessageArrived(message) {
+        console.log("Received message: " + message.payloadString);
+        if (message.payloadString.includes("start_count_")) {
+          document.getElementById('take').style.display = 'inline';
+          document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+          document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+        }
+        else if (message.payloadString.includes("save_image_ok")) {
+          console.log("Chuỗi '" + "save_image_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          publishToDifferentTopic(messageToSend, topicToSend);
+        }
+        else {
+          console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+        }
+    }
 
     function on_load()
     {
@@ -92,7 +146,7 @@
 
     function on_connect_server()
     {
-      document.getElementById('take').style.display = 'inline';
+      document.getElementById('take').style.display = 'none';
       document.getElementById('connect').style.display = 'none';
       connectWebSocket();  // Gọi hàm để kết nối WebSocket
       console.log("on_connect_server");
@@ -126,10 +180,14 @@
           web_socket = null;
         }
     }
-
+    function publishToDifferentTopic(message, topic) {
+        var message = new Paho.MQTT.Message(message);
+        message.destinationName = topic;
+        client.send(message);
+    }
     function on_message(recv_data)
     {
-      // console.log(recv_data.data);
+      console.log(recv_data.data);
       //Get image with "Giữ Đồ" option, display it and save image if the face is detected
       if (true == store_item)
       {

@@ -10,6 +10,13 @@
         "xlocmon": "c",
         "time.h": "c",
         "wifi_connection.h": "c",
-        "camera_pins.h": "c"
+        "camera_pins.h": "c",
+        "charconv": "c",
+        "chrono": "c",
+        "format": "c",
+        "locale": "c",
+        "regex": "c",
+        "xlocale": "c",
+        "cstdio": "c"
     }
 }
