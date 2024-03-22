@@ -4,6 +4,13 @@ import shutil
 import re
 import asyncio
 import websockets
+import paho.mqtt.publish as publish
+import mongoDB as f2
+
+# MQTT
+broker_address = "mqtt.eclipseprojects.io"
+topic = "/topic/hungmai_py_publish"
+topic_esp = "/topic/hungmai_wb_publish"
 
 # Gửi data đến websocket
 async def send_signal(signal):
@@ -21,7 +28,7 @@ async def send_signal(signal):
         print("WebSocket connection closed.")
 
 # Tìm khuôn mặt người trong folder và gửi kết quả đến ESP32-CAM, remove hình ảnh
-def find_unknown_people(filename, folder_store, folder_to_check, name_image):
+def find_unknown_people(filename, folder_store, folder_to_check, name_image, fs):
         filepath = os.path.join(folder_to_check, filename)
         # Kiểm tra xem tệp có phải là ảnh không
         if os.path.isfile(filepath) and filename.lower().endswith(('.png', '.jpg', '.jpeg')):
@@ -47,20 +54,21 @@ def find_unknown_people(filename, folder_store, folder_to_check, name_image):
                         # Gửi tín hiệu đến WebSocket ở đây
                         new_file = f"{new_file_name}{extension}"
                         print(f"Person detected in {new_file}. Send signal to WebSocket.")
-                        # Thay thế bằng mqtt
-                        asyncio.get_event_loop().run_until_complete(send_signal(f"{new_file_name}"))
+                        # Publish đến MQTT
+                        publish.single(topic_esp, f"image_get_{match}", hostname=broker_address)
                         #Remove file
                         stdout = result.stdout.replace("\n", "")
                         new_file_remove = f"{stdout}{extension}"
                         file_remove = os.path.join(folder_store, new_file_remove)
+                        f2.delete_image(new_file_remove,fs)
                         print(f"remove file {file_remove}")
                         os.remove(file_remove)
                 elif count_occurrences >= 1:
                     print("So many people!!!!!")
                 else:
                     print(f"No person detected in {filename}.")
-                    # Thay thế bằng mqtt
-                    asyncio.get_event_loop().run_until_complete(send_signal("no_person"))
+                    # Publish đến MQTT
+                    publish.single(topic_esp, f"no_person_match", hostname=broker_address)
             except subprocess.CalledProcessError as e:
                 # Lệnh thất bại, không có người nào được tìm thấy
                 print(f"Error processing {filename}: {e}")
@@ -94,7 +102,7 @@ def count_images_in_folder(folder_store):
     return len(image_files)
 
 # Move ảnh đến store folder từ download folder
-def move_image(file_store, folder_to_check, folder_store):
+def move_image(file_store, folder_to_check, folder_store, fs):
     filepath = os.path.join(folder_to_check, file_store)
     if os.path.exists(filepath):
         # Đếm số lượng hình trong thư mục lưu trữ
@@ -102,11 +110,12 @@ def move_image(file_store, folder_to_check, folder_store):
         # Thêm số lượng hình vào tên file
         base_name, extension = os.path.splitext(file_store)
         new_file_name = f"{base_name}_{image_count + 1}{extension}"
-
+        file_store = new_file_name
         destination_path = os.path.join(folder_store, new_file_name)
         # Di chuyển tệp đến thư mục lưu trữ
         shutil.move(filepath, destination_path)
         print(f"File {file_store} moved to {folder_store}.")
+        f2.push_image(destination_path, fs, new_file_name)
         return destination_path
     else:
         print(f"No image in {folder_to_check}.")

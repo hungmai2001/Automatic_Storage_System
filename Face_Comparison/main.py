@@ -5,7 +5,7 @@ import mongoDB as f2
 from pymongo.mongo_client import MongoClient
 from gridfs import GridFS
 import paho.mqtt.publish as publish
-
+import re
 name_image = "image_store_"
 # Đường dẫn đến thư mục cần kiểm tra
 folder_to_check = "D:/DATN/esp32_cam_image"
@@ -28,6 +28,7 @@ fs = GridFS(db, collection="images")
 # MQTT
 broker_address = "mqtt.eclipseprojects.io"
 topic = "/topic/hungmai_py_publish"
+topic_esp = "/topic/hungmai_wb_publish"
 
 if __name__ == "__main__":
     # Xóa ảnh trong store folder
@@ -43,11 +44,17 @@ if __name__ == "__main__":
         file_check = f1.check_file_in_folder(folder_to_check, name_to_check)
         if file_check:
             if "image_store" in file_check:
-                filepath = os.path.join(folder_to_check, file_check)
-                new_file_move = f1.move_image(file_check, folder_to_check, folder_store)
+                # Sử dụng regular expression để tìm số tự nhiên trong chuỗi
+                # match = re.search(r'\d+', file_check)
+                # if match:
+                #     # Nếu tìm thấy số tự nhiên, lấy giá trị và chuyển đổi thành số nguyên
+                #     x = int(match.group())
+
+                # filepath = os.path.join(folder_to_check, file_check)
+                new_file_move = f1.move_image(file_check, folder_to_check, folder_store, fs)
                 if new_file_move:
-                    f2.push_image(new_file_move, fs, file_check)
-                    publish.single(topic,"save_image_ok", hostname=broker_address)
+                    count = f1.count_images_in_folder(folder_store)
+                    publish.single(topic,f"save_image_{count}", hostname=broker_address)
 
                     #Loop để chờ data finger từ esp32-cam
                     #####
@@ -57,7 +64,7 @@ if __name__ == "__main__":
                 else:
                     print("Error")
             elif "image_get" in file_check:
-                f1.find_unknown_people(file_check, folder_store, folder_to_check, name_image)
+                f1.find_unknown_people(file_check, folder_store, folder_to_check, name_image, fs)
         # Chờ 2 giây trước khi kiểm tra lại
         else:
             time.sleep(2)

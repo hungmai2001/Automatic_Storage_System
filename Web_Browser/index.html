@@ -52,10 +52,11 @@
     const displayMessageTimeout = 5000;
     const receiveMessageTimeout = 10000;
     var globalMessageElement;
-    var messageToSend = "start_finger";
+    var messageToSend = "start_finger_";
     var topicToSend = "/topic/hungmai_wb_publish";
+    var number = 0;
     // Tạo một MQTT client instance
-    var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "clientId");
+    var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
     // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
     client.onConnectionLost = onConnectionLost;
     client.onMessageArrived = onMessageArrived;
@@ -67,7 +68,9 @@
         },
         onFailure: function (message) {
             console.log("Connection failed: " + message.errorMessage);
-        }
+        },
+        timeout: 1000, // Thời gian chờ (giây) trước khi bỏ kết nối
+        keepAliveInterval: 12000 // Thời gian giữ kết nối (giây)
     });
 
     // Hàm callback được gọi khi kết nối bị mất
@@ -84,22 +87,66 @@
                       console.log("Reconnection failed: " + message.errorMessage);
                   }
               });
-          }, 2000); // Thử kết nối lại sau 2 giây
+          }, 20); // Thử kết nối lại sau 2 giây
         }
     }
 
     // Hàm callback được gọi khi nhận được một message mới
     function onMessageArrived(message) {
         console.log("Received message: " + message.payloadString);
+        // Bắt đầu chạy ứng dụng
         if (message.payloadString.includes("start_count_")) {
           document.getElementById('take').style.display = 'inline';
           document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
           document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
           console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
         }
-        else if (message.payloadString.includes("save_image_ok")) {
-          console.log("Chuỗi '" + "save_image_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
-          publishToDifferentTopic(messageToSend, topicToSend);
+        // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
+        else if (message.payloadString.includes("save_image_")) {
+          console.log("Chuỗi '" + "save_image_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          // Sử dụng regular expression để tìm số tự nhiên trong chuỗi
+          var matches = message.payloadString.match(/\d+/);
+          if (matches) {
+            number = parseInt(matches[0]);
+          }
+          document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+          document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+          displayMessage_global("VUI LÒNG NHẬP VÂN TAY........");
+          publishToDifferentTopic(messageToSend + number, topicToSend);
+        }
+        // Nhận message đã lưu finger thành công và hiện lại các option
+        else if (message.payloadString.includes("save_finger_ok")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "save_finger_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          displayMessage("THÔNG TIN CỦA BẠN ĐÃ ĐƯỢC LƯU TRỮ. CỬA ĐÃ MỞ.", 0, displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+        }
+        // Nhận message đã lưu finger thành công và hiện lại các option
+        else if (message.payloadString.includes("image_detect")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "image_detect" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          displayMessage("CỬA ĐÃ MỞ, VUI LÒNG LẤY ĐỒ!!!", 0, displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+          get_item = false;
+          status_ = false;
+        }
+        // Nhận message đã lưu finger thành công và hiện lại các option
+        else if (message.payloadString.includes("no_person")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "no_person" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          displayMessage("KHÔNG CÓ THÔNG TIN. VUI LÒNG THỬ LẠI!!!", 0, displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+          get_item = false;
+          status_ = false;
         }
         else {
           console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
@@ -187,7 +234,7 @@
     }
     function on_message(recv_data)
     {
-      console.log(recv_data.data);
+      // console.log(recv_data.data);
       //Get image with "Giữ Đồ" option, display it and save image if the face is detected
       if (true == store_item)
       {
@@ -207,11 +254,12 @@
           var recv_image_data = new Uint8Array(recv_data.data);
           saveImage(recv_image_data, "image_store.png");
           clearCanvas();
-          displayMessage("Thông tin của bạn đã được lưu trữ", 0, displayMessageTimeout, 0);
-          setTimeout(() => {
-              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
-              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
-          }, displayMessageTimeout);
+          // displayMessage_global("THÔNG TIN CỦA BẠN ĐANG ĐƯỢC XỬ LÝ........");
+          // displayMessage("Thông tin của bạn đã được lưu trữ", 0, displayMessageTimeout);
+          // setTimeout(() => {
+          //     document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+          //     document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          // }, displayMessageTimeout);
           face_detect = false;
           store_item = false;
         }
@@ -241,9 +289,10 @@
           var recv_image_data = new Uint8Array(recv_data.data);
           saveImage(recv_image_data, "image_get.png");
           clearCanvas();
-          displayMessage_no("Thông tin của bạn đang được xử lý............", receiveMessageTimeout);
-          setTimeout(() => {
-          }, receiveMessageTimeout);
+          displayMessage_global("THÔNG TIN CỦA BẠN ĐANG ĐƯỢC XỬ LÝ........");
+          // displayMessage_no("Thông tin của bạn đang được xử lý............", receiveMessageTimeout);
+          // setTimeout(() => {
+          // }, receiveMessageTimeout);
           console.log("return displayMessage");
           face_detect = false;
           status_ = true;
@@ -331,6 +380,21 @@
             web_socket.send(text_input);
       }, timeout);
 
+      globalMessageElement = messageElement;
+    }
+    function displayMessage_global(message)
+    {
+      var messageElement = document.createElement('div');
+      messageElement.style.fontSize = '20px';
+      messageElement.style.fontWeight = 'bold';
+      messageElement.style.color = 'green';
+      messageElement.style.position = 'fixed';
+      messageElement.style.top = '50%';
+      messageElement.style.left = '50%';
+      messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.innerHTML = message;
+
+      document.body.appendChild(messageElement);
       globalMessageElement = messageElement;
     }
     async function displayImage(pixels)
