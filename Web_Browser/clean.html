@@ -31,7 +31,7 @@
       <input type="button" value="connect server" onclick="on_connect_server();">
       <input type="text" id="connect_input" name="connect_input" value="esp32-camera.local">
     </div>
-    <div id="take" style="display:none;">
+    <div id="take">
       <input type="button" value="GIỮ ĐỒ" onclick="on_store_item();" id="store">
       <input type="button" value="LẤY ĐỒ" onclick="on_get_item();" id="get">
     </div>
@@ -52,6 +52,9 @@
     const displayMessageTimeout = 5000;
     const receiveMessageTimeout = 10000;
     var globalMessageElement;
+    var messageToSend = "start_finger_";
+    var topicToSend = "/topic/hungmai_wb_publish";
+    var number = 0;
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "clientId");
     // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
@@ -71,21 +74,76 @@
     // Hàm callback được gọi khi kết nối bị mất
     function onConnectionLost(responseObject) {
         if (responseObject.errorCode !== 0) {
-            console.log("Connection lost: " + responseObject.errorMessage);
-            setTimeout(connect, 5000); // Thử kết nối lại sau 5 giây
+          console.log("Connection lost: " + responseObject.errorMessage);
+          setTimeout(function() {
+              client.connect({
+                  onSuccess: function () {
+                      console.log("Reconnected to MQTT broker");
+                      client.subscribe("/topic/hungmai_py_publish");
+                  },
+                  onFailure: function (message) {
+                      console.log("Reconnection failed: " + message.errorMessage);
+                  }
+              });
+          }, 20); // Thử kết nối lại sau 2 giây
         }
     }
 
     // Hàm callback được gọi khi nhận được một message mới
     function onMessageArrived(message) {
         console.log("Received message: " + message.payloadString);
-        if (message.payloadString.includes("start_count_")){
+        // Bắt đầu chạy ứng dụng
+        if (message.payloadString.includes("start_count_")) {
+          document.getElementById('take').style.display = 'inline';
           document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
           document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
           console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
         }
+        // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
+        else if (message.payloadString.includes("save_image_")) {
+          console.log("Chuỗi '" + "save_image_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          // Sử dụng regular expression để tìm số tự nhiên trong chuỗi
+          var matches = message.payloadString.match(/\d+/);
+          if (matches) {
+            number = parseInt(matches[0]);
+          }
+          document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+          document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+          displayMessage_global("VUI LÒNG NHẬP VÂN TAY........");
+          publishToDifferentTopic(messageToSend + number, topicToSend);
+        }
+        // Nhận message đã lưu finger thành công và hiện lại các option
+        else if (message.payloadString.includes("save_finger_ok")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "save_finger_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          displayMessage("THÔNG TIN CỦA BẠN ĐÃ ĐƯỢC LƯU TRỮ. CỬA ĐÃ MỞ.", 0, displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+        }
+        // Nhận message đã lưu finger thành công và hiện lại các option
+        else if (message.payloadString.includes("image_detect")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "image_detect" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          displayMessage("CỬA ĐÃ MỞ, VUI LÒNG LẤY ĐỒ!!!", 0, displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+        }
+        // Nhận message đã lưu finger thành công và hiện lại các option
+        else if (message.payloadString.includes("no_person")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "no_person" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          displayMessage("KHÔNG CÓ THÔNG TIN. VUI LÒNG THỬ LẠI!!!", 0, displayMessageTimeout);
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+        }
         else {
-          console.log("Chuỗi '" + "start_count_" + "không" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
         }
     }
 

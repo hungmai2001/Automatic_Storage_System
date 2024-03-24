@@ -5,8 +5,8 @@ import re
 import asyncio
 import websockets
 import paho.mqtt.publish as publish
-import mongoDB as f2
-
+import mongoDB_MQTT as f2
+import main as f_main
 # MQTT
 broker_address = "mqtt.eclipseprojects.io"
 topic = "/topic/hungmai_py_publish"
@@ -68,7 +68,14 @@ def find_unknown_people(filename, folder_store, folder_to_check, name_image, fs)
                 else:
                     print(f"No person detected in {filename}.")
                     # Publish đến MQTT
-                    publish.single(topic_esp, f"no_person_match", hostname=broker_address)
+                    publish.single(topic, f"no_person_match", hostname=broker_address)
+                    result_finger = f2.loop_mqtt_to_waiting_events()
+                    if (result_finger >= 0):
+                        new_file_remove = f"image_store_{result_finger}.png"
+                        print(f"remove file {new_file_remove}")
+                        file_remove = os.path.join(folder_store, new_file_remove)
+                        f2.delete_image(new_file_remove,fs)
+                        os.remove(file_remove)
             except subprocess.CalledProcessError as e:
                 # Lệnh thất bại, không có người nào được tìm thấy
                 print(f"Error processing {filename}: {e}")
@@ -101,22 +108,43 @@ def count_images_in_folder(folder_store):
     image_files = [f for f in os.listdir(folder_store) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
     return len(image_files)
 
+# Đếm số lượng, lấy số của hình ảnh và return về danh sách
+def images_in_folder(folder_store, name_image):
+    path = "start_count_"
+    count = count_images_in_folder(folder_store)
+    path = path + f"{count}_num"
+    image_files = os.listdir(folder_store)
+    for file in image_files:
+        matches = re.findall(f'{name_image}(\d+)', file)
+        for match in matches:
+            path = path + f"_{match}"
+            f_main.manager.add_number(match)
+    print("path to send mqtt: " + path)
+    return path
+
+def num_store_image(folder_store):
+    image_files = os.listdir(folder_store)
+
 # Move ảnh đến store folder từ download folder
 def move_image(file_store, folder_to_check, folder_store, fs):
     filepath = os.path.join(folder_to_check, file_store)
     if os.path.exists(filepath):
         # Đếm số lượng hình trong thư mục lưu trữ
-        image_count = count_images_in_folder(folder_store)
-        # Thêm số lượng hình vào tên file
-        base_name, extension = os.path.splitext(file_store)
-        new_file_name = f"{base_name}_{image_count + 1}{extension}"
-        file_store = new_file_name
-        destination_path = os.path.join(folder_store, new_file_name)
-        # Di chuyển tệp đến thư mục lưu trữ
-        shutil.move(filepath, destination_path)
-        print(f"File {file_store} moved to {folder_store}.")
-        f2.push_image(destination_path, fs, new_file_name)
-        return destination_path
+        #image_count = count_images_in_folder(folder_store)
+        image_count = f_main.manager.choose_number()
+        if image_count > 0:
+            # Thêm số lượng hình vào tên file
+            base_name, extension = os.path.splitext(file_store)
+            new_file_name = f"{base_name}_{image_count}{extension}"
+            file_store = new_file_name
+            destination_path = os.path.join(folder_store, new_file_name)
+            # Di chuyển tệp đến thư mục lưu trữ
+            shutil.move(filepath, destination_path)
+            print(f"File {file_store} moved to {folder_store}.")
+            f2.push_image(destination_path, fs, new_file_name)
+            f_main.manager.add_number(image_count)
+            publish.single(topic,f"save_image_{image_count}", hostname=broker_address)
+            return destination_path
     else:
         print(f"No image in {folder_to_check}.")
         return None

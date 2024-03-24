@@ -39,7 +39,7 @@
       Server connection fail.
     </div>
     <div>
-      <canvas id="canvas_image" width="160" height="120"></canvas>
+      <canvas id="canvas_image" width="240" height="176"></canvas>
     </div>
   </body>
 
@@ -53,6 +53,7 @@
     const receiveMessageTimeout = 10000;
     var globalMessageElement;
     var messageToSend = "start_finger_";
+    var comparefinger = "compare_finger";
     var topicToSend = "/topic/hungmai_wb_publish";
     var number = 0;
     // Tạo một MQTT client instance
@@ -124,10 +125,10 @@
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
           }, displayMessageTimeout);
         }
-        // Nhận message đã lưu finger thành công và hiện lại các option
+        // Nhận message đã detect được khuôn mặt người và hiện lại các option
         else if (message.payloadString.includes("image_detect")) {
           removeMessageElement();
-          console.log("Chuỗi '" + "image_detect" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          console.log("Chuỗi '" + "image_detect" + "' được tìm thấy trong chuỗi '");
           displayMessage("CỬA ĐÃ MỞ, VUI LÒNG LẤY ĐỒ!!!", 0, displayMessageTimeout);
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
@@ -136,10 +137,10 @@
           get_item = false;
           status_ = false;
         }
-        // Nhận message đã lưu finger thành công và hiện lại các option
-        else if (message.payloadString.includes("no_person")) {
+        // Nhận message không tìm thấy khuôn mặt và gửi message đến esp32-cam để start compare fingerprint
+        else if (message.payloadString.includes("no_person_fingerprint")) {
           removeMessageElement();
-          console.log("Chuỗi '" + "no_person" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          console.log("Chuỗi '" + "no_person_fingerprint" + "' được tìm thấy trong chuỗi '");
           displayMessage("KHÔNG CÓ THÔNG TIN. VUI LÒNG THỬ LẠI!!!", 0, displayMessageTimeout);
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
@@ -148,8 +149,15 @@
           get_item = false;
           status_ = false;
         }
+        // Nhận message không tìm thấy khuôn mặt và gửi message đến esp32-cam để start compare fingerprint
+        else if (message.payloadString.includes("no_person_match")) {
+          removeMessageElement();
+          console.log("Chuỗi '" + "no_person_match" + "' được tìm thấy trong chuỗi '");
+          displayMessage_global("VUI LÒNG NHẬP VÂN TAY ĐỂ XÁC MINH DO HÌNH ẢNH CỦA BẠN KHÔNG KHỚP........");
+          publishToDifferentTopic(comparefinger, topicToSend);
+        }
         else {
-          console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '");
         }
     }
 
@@ -400,8 +408,8 @@
     async function displayImage(pixels)
     {
       // Kích thước hình ảnh
-      const xres = 160;
-      const yres = 120;
+      const xres = 240;
+      const yres = 176;
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
       const scale = 2;
@@ -436,8 +444,8 @@
     async function saveImage(pixels, name_picture)
     {
       // Kích thước hình ảnh
-      const xres = 160;
-      const yres = 120;
+      const xres = 240;
+      const yres = 176;
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
       const scale = 2;
