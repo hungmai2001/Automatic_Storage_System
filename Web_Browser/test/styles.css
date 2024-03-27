@@ -10,7 +10,7 @@ body {
     padding: 0;
     font-family: Arial, sans-serif;
     background-image: url('background_image.jpg');
-    background-size: cover;
+    background-size: 1000px 1000px;
     background-position: center;
     background-repeat: no-repeat;
     height: 100vh; /* Chiều cao là 100% của viewport */
@@ -21,59 +21,107 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 10px;
-    max-width: 1000px; /* Giới hạn chiều rộng của header */
+    max-width: 980px; /* Giới hạn chiều rộng của header */
     margin: 0 auto; /* Căn giữa header */
     background-color: rgba(231, 229, 229, 0.8); /* Màu nền của header */
-    border-radius: 10px; /* Bo tròn góc header */
+}
+
+.language-support {
+    border-radius: 20px;
+    overflow: hidden; /* Đảm bảo các phần tử không bị tràn ra ngoài khung */
 }
 
 .language-support a {
+    display: inline-block;
+    padding: 5px 10px;
     text-decoration: none;
-    color: rgb(8, 2, 2);
+    font-weight: bold;
+}
+
+.language-vie {
+    background-color: #3fa8e6; /* Màu xanh cho VIE */
+    color: white; /* Màu chữ trắng */
+}
+
+.language-eng {
+    background-color: black; /* Màu đen cho ENG */
+    color: white; /* Màu chữ trắng */
+}
+
+.language-support span {
+    padding: 0 5px; /* Khoảng cách giữa dấu phẩy */
+}
+
+
+.support {
+    display: flex;
+    align-items: center; /* Canh các phần tử theo chiều dọc */
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    background-color: white; /* Thêm màu trắng cho khung bo */
+    margin-right: -10px;
+    font-size: 15px;
 }
 
 .support img {
-    width: 20px;
-    height: 20px;
+    width: 25px;
+    height: 25px;
 }
 
 main {
     text-align: center;
-    max-width: 1000px; /* Giới hạn chiều rộng của main */
-    margin: 10px auto; /* Căn giữa main */
+    max-width: 980px; /* Giới hạn chiều rộng của main */
+    margin: 5px auto; /* Căn giữa main */
 }
 
 .logo h1 {
     font-size: 60px;
-    font-family: 'Bauhaus 93', sans-serif;
-    margin: 20px;
-}
-
-.logo h2 {
-    color: rgb(105, 103, 103);
-    font-size: 26px;
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Algerian', sans-serif;
     margin: 10px;
 }
 
+.logo h2 {
+    color: rgb(235, 27, 44);
+    font-size: 26px;
+    font-family: 'Bahnschrift SemiBold', sans-serif;
+    margin: 10px;
+    font-weight: bold; /* Để in đậm chữ */
+}
+
 .logo h3 {
-    color: rgb(175, 171, 171);
+    color: rgb(44, 137, 243);
     font-size: 20px;
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Bahnschrift SemiBold', sans-serif;
     margin: 0;
+    font-weight: bold; /* Để in đậm chữ */
 }
 
 .status {
-    background-color: #e6d6d6;
+    max-width: 100%;
+    max-height: 40px;
     padding: 5px;
-    border-radius: 5px;
-    margin-top: 20px;
+    border-radius: 2px;
+    margin-top: 10px;
+    margin-right: -10px;
+    margin-left: -10px;
+    align-items: center;
+    display: flex; /* Sử dụng flexbox */
+    justify-content: center; /* Căn giữa theo chiều ngang */
 }
 
 .status-box {
+    max-width: 100%;
+    max-height: 40px;
     background-color: #dedede;
     padding: 5px 5px;
     border-radius: 5px;
+    color: rgb(44, 56, 163);
+    font-weight: bold; /* Để in đậm chữ */
+    font-family: 'Bahnschrift SemiBold', sans-serif;
+    font-size: 20px;
+    align-items: center;
+    display: flex; /* Sử dụng flexbox */
+    justify-content: center; /* Căn giữa theo chiều ngang */
 }
 
 .options {
