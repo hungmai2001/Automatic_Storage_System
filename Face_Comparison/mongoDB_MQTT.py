@@ -79,3 +79,39 @@ def loop_mqtt_to_waiting_events():
     # Disconnect MQTT client
     client.disconnect()
     return number
+
+# Define callback function for when a message is received
+def on_message_start(client, userdata, message):
+    global string_finger
+    if "store_fingerprint" in message.payload.decode():
+        string_finger = message.payload.decode()
+        print("store_fingerprint được tìm thấy số trong chuỗi.")
+        print(message.payload.decode())
+    else:
+        string_finger = "None"
+        print("None")
+    global message_received
+    message_received = True
+
+def loop_mqtt_to_waiting_events_start():
+    global message_received
+    global string_finger
+    message_received = False
+    # Create MQTT client instance
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    # Set callback function
+    client.on_message = on_message_start
+    # Connect to MQTT broker
+    broker_address = "mqtt.eclipseprojects.io"  # Thay bằng địa chỉ broker MQTT của bạn
+    client.connect(broker_address)
+    # Subscribe to topic
+    topic = "/topic/hungmai_finger_result"  # Thay bằng tên chủ đề MQTT bạn muốn subscribe
+    client.subscribe(topic)
+
+    # Loop until a message is received
+    while not message_received:
+        client.loop()
+
+    # Disconnect MQTT client
+    client.disconnect()
+    return string_finger

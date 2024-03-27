@@ -97,10 +97,32 @@
         console.log("Received message: " + message.payloadString);
         // Bắt đầu chạy ứng dụng
         if (message.payloadString.includes("start_count_")) {
+          var matches = message.payloadString.match(/\d+/);
+          console.log("matches" + matches);
+          if (matches) {
+            number = parseInt(matches[0]);
+          }
           document.getElementById('take').style.display = 'inline';
-          document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
           document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
-          console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
+          if (number < 7)
+          {
+            document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+          }
+          else
+          {
+            document.getElementById('store').style.display = 'none'; // Hiển thị lại nút "GIỮ ĐỒ"
+            displayMessage_global("HẾT CỬA. KHÔNG THỂ GIỮ ĐỒ. CHỈ CÓ THỂ LẤY ĐỒ!");
+          }
+          console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi");
+        }
+        // Nhận message max image
+        else if (message.payloadString.includes("max_image")) {
+          console.log("Chuỗi '" + "max_image" + "' được tìm thấy trong chuỗi");
+          // Sử dụng regular expression để tìm số tự nhiên trong chuỗi
+          document.getElementById('store').style.display = 'none'; // Ẩn nút GIỮ ĐỒ
+          document.getElementById('get').style.display = 'inline'; // Ẩn nút LẤY ĐỒ
+          removeMessageElement();
+          displayMessage_global("HẾT CỬA. KHÔNG THỂ GIỮ ĐỒ. CHỈ CÓ THỂ LẤY ĐỒ!");
         }
         // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
         else if (message.payloadString.includes("save_image_")) {
@@ -218,6 +240,7 @@
     {
       get_item = true;
       var text_input = "capture";
+      removeMessageElement();
       web_socket.send(text_input);
     }
 
