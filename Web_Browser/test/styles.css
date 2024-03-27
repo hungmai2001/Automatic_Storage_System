@@ -1,0 +1,112 @@
+@font-face {
+    font-family: 'Roboto';
+    src: url('path/to/Roboto-Regular.ttf') format('truetype');
+    font-weight: 400; /* Regular */
+    font-style: normal;
+}
+  
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-image: url('background_image.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh; /* Chiều cao là 100% của viewport */
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    max-width: 1000px; /* Giới hạn chiều rộng của header */
+    margin: 0 auto; /* Căn giữa header */
+    background-color: rgba(231, 229, 229, 0.8); /* Màu nền của header */
+    border-radius: 10px; /* Bo tròn góc header */
+}
+
+.language-support a {
+    text-decoration: none;
+    color: rgb(8, 2, 2);
+}
+
+.support img {
+    width: 20px;
+    height: 20px;
+}
+
+main {
+    text-align: center;
+    max-width: 1000px; /* Giới hạn chiều rộng của main */
+    margin: 10px auto; /* Căn giữa main */
+}
+
+.logo h1 {
+    font-size: 60px;
+    font-family: 'Bauhaus 93', sans-serif;
+    margin: 20px;
+}
+
+.logo h2 {
+    color: rgb(105, 103, 103);
+    font-size: 26px;
+    font-family: 'Roboto', sans-serif;
+    margin: 10px;
+}
+
+.logo h3 {
+    color: rgb(175, 171, 171);
+    font-size: 20px;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+}
+
+.status {
+    background-color: #e6d6d6;
+    padding: 5px;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+.status-box {
+    background-color: #dedede;
+    padding: 5px 5px;
+    border-radius: 5px;
+}
+
+.options {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+}
+
+.option {
+    background-color: #20a4d8;
+    padding: 10px 40px;
+    border-radius: 20px;
+    display: inline-block;
+    margin: 0 10px;
+}
+
+.option img {
+    width: 30px;
+    height: 30px;
+    /* margin-bottom: 10px; */
+    display: inline-block;
+    border-radius: 50%; /* Bo tròn icon */
+    background-color: white; /* Màu nền của icon */
+    padding: 5px; /* Khoảng cách giữa icon và khung tròn */
+}
+
+.option p {
+    margin: 0;
+    display: inline-block; /* Hiển thị trên cùng một dòng */
+    vertical-align: middle; /* Canh giữa theo chiều dọc */
+    font-size: 40px; /* Kích thước chữ */
+    font-family: 'Segoe UI Black', sans-serif;
+    font-weight: bold; /* Đặt đậm chữ */
+    margin-left: 10px; /* Khoảng cách giữa icon và chữ */
+    text-shadow: 0 0 3px white; /* Thêm viền trắng cho chữ */
+}
