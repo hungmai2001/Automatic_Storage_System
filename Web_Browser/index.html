@@ -39,7 +39,7 @@
       Server connection fail.
     </div>
     <div>
-      <canvas id="canvas_image" width="240" height="176"></canvas>
+      <canvas id="canvas_image" width="160" height="176"></canvas>
     </div>
   </body>
 
@@ -431,7 +431,7 @@
     async function displayImage(pixels)
     {
       // Kích thước hình ảnh
-      const xres = 240;
+      const xres = 160;
       const yres = 176;
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
@@ -467,7 +467,7 @@
     async function saveImage(pixels, name_picture)
     {
       // Kích thước hình ảnh
-      const xres = 240;
+      const xres = 160;
       const yres = 176;
       // Tạo canvas và lấy context
       const canvas = document.getElementById('canvas_image');
