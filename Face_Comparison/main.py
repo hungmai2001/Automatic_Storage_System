@@ -128,6 +128,7 @@ if __name__ == "__main__":
                     if new_file_move:
                         count = f1.count_images_in_folder(folder_store)
                         manager.add_number(image_count)
+                        publish.single(topic,"save_finger_ok", hostname=broker_address)
                         # publish.single(topic,f"save_image_{count}", hostname=broker_address)
 
                         #Loop để chờ data finger từ esp32-cam

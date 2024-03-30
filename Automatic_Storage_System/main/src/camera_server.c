@@ -42,8 +42,9 @@ static const char *TAG2 = "IMAGE_GET";
 static const char *TAG_MQTT = "mqttws_example";
 static int camera_w = 0;
 static int camera_h = 0;
-esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face, bool * fir_cap);
+esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, bool * fir_cap);
 int get_sequence_number(const char *str, const char *pattern);
+bool downloaded_image = false;
 // Store wi-fi credentials
 char ssid[32] = "Trinh";
 char password[64] = "0333755401 ";
@@ -74,16 +75,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG_MQTT, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+        msg_id = esp_mqtt_client_subscribe(client, "/topic/hungmai_wb_publish", 0);
         ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
-
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
-
-        msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        ESP_LOGI(TAG_MQTT, "sent unsubscribe successful, msg_id=%d", msg_id);
+        // msg_id = esp_mqtt_client_subscribe(client, "/topic/hungmai_py_publish", 0);
+        // ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DISCONNECTED");
@@ -91,8 +86,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG_MQTT, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-        ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG_MQTT, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
@@ -104,6 +97,15 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DATA");
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
+        if (strstr(event->data, "downloaded_image") != NULL)
+        {
+            downloaded_image = true;
+            ESP_LOGI(TAG_MQTT, "Downloaded_image");
+        }
+        // else if ( (strstr(event->data, "save_image_") != NULL) || (strstr(event->data, "image_detect") != NULL) || (strstr(event->data, "no_person_match") != NULL))
+        // {
+        //     downloaded_image = false;
+        // }
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG_MQTT, "MQTT_EVENT_ERROR");
@@ -153,14 +155,14 @@ static esp_err_t init_camera(void) {
         .pin_href = CAM_PIN_HREF,
         .pin_pclk = CAM_PIN_PCLK,
 
-        .xclk_freq_hz = 10000000,
+        .xclk_freq_hz = 20000000,
         .ledc_timer = LEDC_TIMER_0,
         .ledc_channel = LEDC_CHANNEL_0,
 
-        .pixel_format = PIXFORMAT_RGB565,
-        .frame_size = FRAMESIZE_QQVGA,
+        .pixel_format = PIXFORMAT_JPEG,
+        .frame_size = FRAMESIZE_VGA,
 
-        .jpeg_quality = 17,
+        .jpeg_quality = 12,
         .fb_count = 2,
         .fb_location = CAMERA_FB_IN_PSRAM,
         .grab_mode = CAMERA_GRAB_WHEN_EMPTY
@@ -194,6 +196,25 @@ esp_err_t init_pins(void) {
     return gpio_config(&io_conf);
 }
 
+int32_t calcBase64EncodedSize(int origDataSize)
+{
+	// Number of blocks in 6-bit units (rounded up in 6-bit units)
+	int32_t numBlocks6 = ((origDataSize * 8) + 5) / 6;
+	// Number of blocks in units of 4 characters (rounded up in units of 4 characters)
+	int32_t numBlocks4 = (numBlocks6 + 3) / 4;
+	// Number of characters without line breaks
+	int32_t numNetChars = numBlocks4 * 4;
+	// Size considering line breaks every 76 characters (line breaks are "\ r \ n")
+	return numNetChars;
+}
+
+esp_err_t Image2Base64(camera_fb_t g_image_buf, size_t base64_buffer_len, uint8_t * base64_buffer)
+{
+	// Convert from JPEG to BASE64
+	size_t encord_len;
+	esp_err_t ret = mbedtls_base64_encode(base64_buffer, base64_buffer_len, &encord_len, g_image_buf.buf, g_image_buf.len);
+	return ESP_OK;
+}
 // Handle requirements when receiving from WS client
 esp_err_t handle_ws_req(httpd_req_t *req)
 {
@@ -240,13 +261,13 @@ esp_err_t handle_ws_req(httpd_req_t *req)
     if ( strcmp((char*)ws_pkt.payload,"capture") == 0 )
     {   
         bool first_cap = true;
-        uint8_t count_face = 0;
-        while( (ret == ESP_OK) && (count_face <= COUNT_DETECT) )
+        while( (ret == ESP_OK) && (downloaded_image == false))
         {
-            ret = image_process(req, &ws_pkt, &count_face, &first_cap);
+            ret = image_process(req, &ws_pkt, &first_cap);
             //Switch to other task
             vTaskDelay(pdMS_TO_TICKS(20));
         }
+        downloaded_image = false;
     }
     // Receive name of picture detected from python scripts
     else if (strstr((char*)ws_pkt.payload, img_get_yes) != NULL)
@@ -360,7 +381,7 @@ void app_main() {
 }
 
 
-esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_face, bool * fir_cap)
+esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, bool * fir_cap)
 {
     esp_err_t ret = ESP_OK;
     //clear internal queue
@@ -379,69 +400,46 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, uint8_t *count_
 		ESP_LOGE(TAG1, "Camera Capture Failed");
 		return ESP_FAIL;
 	}
-    
-    //Detect face
-    bool detect = false;
-    if (*count_face == COUNT_DETECT)
-    {
-        detect = face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
-    }
-    else
-        detect = inference_face_detection((uint16_t*)fb->buf, (int)fb->width, (int)fb->height, 3);
+    camera_fb_t g_image = *fb;
+    // Get Base64 size
+    int32_t base64Size = calcBase64EncodedSize(g_image.len);
 
-    //count face
-    if ( (true == detect) && (*count_face < COUNT_DETECT) )
-    {
-        ESP_LOGI(TAG1, "count_face %d", *count_face);
-        *count_face += 1;
+    // Allocate Base64 buffer
+    // You have to use calloc. It doesn't work with malloc.
+    uint8_t *base64_buffer = NULL;
+    size_t base64_buffer_len = base64Size + 1;
+    base64_buffer = calloc(1, base64_buffer_len);
+    if (base64_buffer == NULL) {
+        ESP_LOGE(TAG, "calloc fail. base64_buffer_len %d", base64_buffer_len);
+        return ESP_FAIL;
     }
-    else if ( (true == detect) && (*count_face == COUNT_DETECT) )
-    {
-        ESP_LOGI(TAG1, "count_face %d", *count_face);
-        pkt->type = HTTPD_WS_TYPE_TEXT;
-        pkt->payload = detect_send;
-        pkt->len = detect_send_len;
-#ifdef LOG_DEBUG_DETECT
-        ESP_LOGI(TAG1, "detect ws_pkt.len: %d", pkt->len);
-        ESP_LOGI(TAG1, "detect ws_pkt.type: %d", pkt->type);
-        ESP_LOGI(TAG1, "detect ws_pkt.payload: %s", pkt->payload);
-        ESP_LOGI(TAG2, "detected ws_pkt.final: %d", pkt->final);
-        ESP_LOGI(TAG2, "detected ws_pkt.fragmented: %d", pkt->fragmented);
-#endif
-        ret = httpd_ws_send_frame(req, pkt);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
-            return ret;
-        }
-        memset(pkt, 0, sizeof(httpd_ws_frame_t));
-        *count_face += 1;
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-    else
-    {
-        *count_face = 0;
-    }
+    memset(base64_buffer, 0, base64_buffer_len);
 
-    //store value to ws_pkt
-    pkt->payload = fb->buf;
-    pkt->len = fb->len;
-    pkt->type = HTTPD_WS_TYPE_BINARY;
-#ifdef LOG_DEBUG
-    ESP_LOGI(TAG1, "Packet pkt->len: %d", pkt->len);
-    ESP_LOGI(TAG1, "Packet pkt->type: %d", pkt->type);
-    ESP_LOGI(TAG1, "Packet pkt->fragmented: %d", pkt->fragmented);
-    ESP_LOGI(TAG1, "Packet pkt->final: %d", pkt->final);
-#endif
-    esp_camera_fb_return(fb);
-
-    // Send to WebSocket
-    ret = httpd_ws_send_frame(req, pkt);
+    // Convert from Image to Base64
+    ret = Image2Base64(g_image, base64_buffer_len, base64_buffer);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG1, "httpd_ws_send_frame failed with %d", ret);
+        free(base64_buffer);
         return ret;
     }
-    memset(pkt, 0, sizeof(httpd_ws_frame_t));
+    // Send by WebSocket
+    pkt->type = HTTPD_WS_TYPE_TEXT;
+    pkt->payload = base64_buffer;
+    pkt->len = base64Size;
+#ifdef LOG_DEBUG
+    ESP_LOGI(TAG, "Packet ws_pkt.len: %d", ws_pkt.len);
+    ESP_LOGI(TAG, "Packet ws_pkt.type: %d", ws_pkt.type);
+    ESP_LOGI(TAG, "Packet ws_pkt.fragmented: %d", ws_pkt.fragmented);
+    ESP_LOGI(TAG, "Packet ws_pkt.final: %d", ws_pkt.final);
+#endif
+
+    ret = httpd_ws_send_frame(req, pkt);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+        return ret;
+    }
+
+    free(base64_buffer);
+    esp_camera_fb_return(fb);
     return ESP_OK;
 }
 

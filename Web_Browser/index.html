@@ -18,11 +18,7 @@
         input:hover {
             background-color: #ccc;
         }
-        canvas {
-            width: 100%; /* Chiều rộng tương đương với kích thước của cửa sổ */
-            height: auto; /* Chiều cao tự động điều chỉnh theo tỉ lệ khung hình */
-            display: block; /* Đảm bảo canvas được vẽ toàn bộ kích thước của nó */
-        }
+
     </style>
     <script src="mqttws31.js"></script>
   </head>
@@ -39,11 +35,12 @@
       Server connection fail.
     </div>
     <div>
-      <canvas id="canvas_image" width="160" height="176"></canvas>
+      <canvas id="canvas_image" width="640" height="480"></canvas>
     </div>
   </body>
-
+  <script defer src="face-api.min.js"></script>
   <script>
+    var count_image = 10;
     var web_socket = null;
     var store_item = false;
     var get_item = false;
@@ -53,9 +50,12 @@
     const receiveMessageTimeout = 10000;
     var globalMessageElement;
     var messageToSend = "start_finger_";
+    var downloaded_image = "downloaded_image";
     var comparefinger = "compare_finger";
     var topicToSend = "/topic/hungmai_wb_publish";
     var number = 0;
+    var faceDetectionCount = 0;
+    var faceDetectedLastTime = false;
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
     // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
@@ -126,6 +126,8 @@
         }
         // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
         else if (message.payloadString.includes("save_image_")) {
+
+          removeMessageElement();
           console.log("Chuỗi '" + "save_image_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
           // Sử dụng regular expression để tìm số tự nhiên trong chuỗi
           var matches = message.payloadString.match(/\d+/);
@@ -263,113 +265,101 @@
         message.destinationName = topic;
         client.send(message);
     }
-    function on_message(recv_data)
+    async function on_message(recv_data)
     {
       // console.log(recv_data.data);
       //Get image with "Giữ Đồ" option, display it and save image if the face is detected
-      if (true == store_item)
+      if ( (true == store_item) || (true == get_item))
       {
         document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
         document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
-        if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) 
-        {
-          var recv_image_data = new Uint8Array(recv_data.data);
-          displayImage(recv_image_data);
-        }
-        else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) 
-        {
-          // console.log("receive image");
-          // console.log(recv_data.data);
-          // console.log(typeof(recv_data.data));
-          // console.log(recv_data.data.byteLength);
-          var recv_image_data = new Uint8Array(recv_data.data);
-          saveImage(recv_image_data, "image_store.png");
-          clearCanvas();
-          // displayMessage_global("THÔNG TIN CỦA BẠN ĐANG ĐƯỢC XỬ LÝ........");
-          // displayMessage("Thông tin của bạn đã được lưu trữ", 0, displayMessageTimeout);
-          // setTimeout(() => {
-          //     document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
-          //     document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
-          // }, displayMessageTimeout);
-          face_detect = false;
-          store_item = false;
-        }
-        else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) 
-        {
-          console.log("start face image");
-          face_detect = true;
-        }
-      }
-      //Get image with "Lấy Đồ" option, display it and save image if the face is detected
-      else if ( (true == get_item) && (false == status_) )
-      {
-        // console.log("receive image 1");
-        document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
-        document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
-        if ( (typeof(recv_data.data) == "object") && (false == face_detect) ) 
-        {
-          var recv_image_data = new Uint8Array(recv_data.data);
-          displayImage(recv_image_data);
-        }
-        else if ( (typeof(recv_data.data) == "object") && (true == face_detect) ) 
-        {
-          // console.log("receive image");
-          // console.log(recv_data.data);
-          // console.log(typeof(recv_data.data));
-          // console.log(recv_data.data.byteLength);
-          var recv_image_data = new Uint8Array(recv_data.data);
-          saveImage(recv_image_data, "image_get.png");
-          clearCanvas();
-          displayMessage_global("THÔNG TIN CỦA BẠN ĐANG ĐƯỢC XỬ LÝ........");
-          // displayMessage_no("Thông tin của bạn đang được xử lý............", receiveMessageTimeout);
-          // setTimeout(() => {
-          // }, receiveMessageTimeout);
-          console.log("return displayMessage");
-          face_detect = false;
-          status_ = true;
-        }
-        else if ( (typeof(recv_data.data) == "string") && (false == face_detect) ) 
-        {
-          console.log("start face image");
-          face_detect = true;
-        }
-        else
-        {
-          console.log("===== face image");
-        }
-      }
+        faceapi.tf.engine().startScope();
+        var recv_image_data = new Uint8Array(recv_data.data);
+        var canvas_image = document.getElementById('canvas_image');
+        var ctx = canvas_image.getContext('2d');
+        var image = new Image();
+        image.src = 'data:image/jpeg;base64,' + recv_data.data;
+        image.onload = async function() {
+          ctx.drawImage(image, 0, 0);
+          await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
+          const detections = await faceapi.detectAllFaces(canvas_image, new faceapi.TinyFaceDetectorOptions());
+          if (faceDetectionCount < count_image - 1) {
+            detections.forEach(detection => {
+              const { x, y, width, height } = detection.box;
+              ctx.strokeStyle = 'white';
+              ctx.lineWidth = 10;
+              ctx.strokeRect(x, y, width, height);
+            });
+          }
+          // Tăng biến đếm khi có khuôn mặt được phát hiện
+          if (detections.length > 0) {
+            if (!faceDetectedLastTime) {
+              // Nếu có phát hiện khuôn mặt sau khi không phát hiện ở lần trước
+              // Thì đặt lại biến đếm về 1
+              faceDetectionCount = 0;
+            } else {
+              // Nếu vẫn phát hiện khuôn mặt liên tục
+              faceDetectionCount++;
+            }
+            faceDetectedLastTime = true;
+          } else {
+            // Nếu không phát hiện khuôn mặt
+            faceDetectionCount = 0;
+            faceDetectedLastTime = false;
+          }
 
-      //Handle face comparison
-      else if ( (true == get_item) && (typeof(recv_data.data) == "string") && (true == status_) )
-      {
-        console.log("receive image 2");
-        console.log("Received data:", recv_data.data);
-        console.log("Length of data:", recv_data.data.length);
-        get_item = false;
-        status_ = false;
-        removeMessageElement();
-        var t = recv_data.data.localeCompare("face_detected");
-        console.log(t);
-        if ( t == 0)
-        {
-          displayMessage("Đã mở tủ. Kết thúc.",0, displayMessageTimeout);
+          // Kiểm tra nếu có 10 lần phát hiện liên tiếp
+          if (faceDetectionCount >= count_image) {
+            if (true == store_item) {
+              // Gọi hàm để thực hiện tải xuống hình ảnh
+              downloadImage(canvas_image.toDataURL('image/jpeg'), "image_store.jpg");
+            }
+            else if (true == get_item) {
+              // Gọi hàm để thực hiện tải xuống hình ảnh
+              downloadImage(canvas_image.toDataURL('image/jpeg'), "image_get.jpg");
+            }
+            // Đặt lại biến đếm về 0 sau khi tải xuống
+            faceDetectionCount = 0;
+            console.log("Downloaded image!!!");
+            // Gửi thông tin đã lưu image đến esp32-cam
+            var text_input = "downloaded_image";
+            web_socket.send(text_input);
+            publishToDifferentTopic(downloaded_image, topicToSend);
+            clearBoundingBoxes();
+            if (true == store_item) {
+              displayMessage_global("KHUÔN MẶT CỦA BẠN ĐANG ĐƯỢC LƯU TRỮ........");
+              store_item = false;
+            }
+            else if (true == get_item) {
+              displayMessage_global("THÔNG TIN CỦA BẠN ĐANG ĐƯỢC XỬ LÝ........");
+              get_item = false;
+            }
+          }
         }
-        else
-        {
-          displayMessage("Không có dữ liệu. Kết thúc.", 0, displayMessageTimeout);
-        }
-        setTimeout(() => {
-            document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
-            document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
-        }, displayMessageTimeout);
+        // Dispose WebGLTexture
+        faceapi.tf.engine().endScope();
+        await faceapi.nets.tinyFaceDetector.dispose();
       }
     }
-
-    function clearCanvas()
-    {
+    
+    function clearBoundingBoxes() {
         var canvas = document.getElementById('canvas_image');
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Xóa toàn bộ canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Hàm để tải xuống hình ảnh
+    function downloadImage(dataUrl, file_name) {
+      // Tạo một đối tượng a để tạo link tải xuống
+      var a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = file_name; // Đặt tên cho file tải xuống
+      document.body.appendChild(a);
+      a.click(); // Kích hoạt sự kiện click trên đối tượng a
+      document.body.removeChild(a);
     }
 
     function displayMessage(message, no_timeout, timeout)
@@ -392,27 +382,7 @@
         }, timeout);
       }
     }
-    function displayMessage_no(message, timeout)
-    {
-      var messageElement = document.createElement('div');
-      messageElement.style.fontSize = '20px';
-      messageElement.style.fontWeight = 'bold';
-      messageElement.style.color = 'green';
-      messageElement.style.position = 'fixed';
-      messageElement.style.top = '50%';
-      messageElement.style.left = '50%';
-      messageElement.style.transform = 'translate(-50%, -50%)';
-      messageElement.innerHTML = message;
 
-      document.body.appendChild(messageElement);
-      setTimeout(() => {
-            // document.body.removeChild(messageElement);
-            var text_input = "verify";
-            web_socket.send(text_input);
-      }, timeout);
-
-      globalMessageElement = messageElement;
-    }
     function displayMessage_global(message)
     {
       var messageElement = document.createElement('div');
@@ -428,98 +398,7 @@
       document.body.appendChild(messageElement);
       globalMessageElement = messageElement;
     }
-    async function displayImage(pixels)
-    {
-      // Kích thước hình ảnh
-      const xres = 160;
-      const yres = 176;
-      // Tạo canvas và lấy context
-      const canvas = document.getElementById('canvas_image');
-      const scale = 2;
-      canvas.width = xres*scale;
-      canvas.height = yres*scale;
-      const ctx = canvas.getContext('2d');
-      // Tạo một ImageData object để quản lý dữ liệu hình ảnh
-      const imgData = ctx.createImageData(xres, yres);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let ln = 0;
-      // Duyệt qua từng hàng và cột của hình ảnh
-      for (let y = 0; y < yres; y++)
-      {
-          for (let x = 0; x < xres; x++)
-          {
-              // Tính toán chỉ số pixel trong mảng pixels
-              const i = (y * xres + x) << 1;
-              // Chuyển đổi từ raw data sang định dạng hình ảnh
-              const pixel16 = (0xffff & pixels[i + 1]) | ((0xffff & pixels[i]) << 8);
-              // Chuyển đổi màu
-              imgData.data[ln + 0] = ((pixel16 >> 8) & 0xF8);   // Red
-              imgData.data[ln + 1] = ((pixel16 >> 3) & 0xFC);   // Green
-              imgData.data[ln + 2] = ((pixel16 << 3) & 0xF8);   // Blue
-              imgData.data[ln + 3] = 255; // Alpha channel, có thể điều chỉnh nếu cần
-              ln += 4; // Di chuyển đến pixel tiếp theo trong imgData
-          }
-      }
-      // Hiển thị hình ảnh trên canvas
-      ctx.putImageData(imgData, 0, 0);
-    }
 
-    async function saveImage(pixels, name_picture)
-    {
-      // Kích thước hình ảnh
-      const xres = 160;
-      const yres = 176;
-      // Tạo canvas và lấy context
-      const canvas = document.getElementById('canvas_image');
-      const scale = 2;
-      canvas.width = xres*scale;
-      canvas.height = yres*scale;
-      const ctx = canvas.getContext('2d');
-      // Tạo một ImageData object để quản lý dữ liệu hình ảnh
-      const imgData = ctx.createImageData(xres, yres);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let ln = 0;
-      // Duyệt qua từng hàng và cột của hình ảnh
-      for (let y = 0; y < yres; y++)
-      {
-          for (let x = 0; x < xres; x++)
-          {
-              // Tính toán chỉ số pixel trong mảng pixels
-              const i = (y * xres + x) << 1;
-              // Chuyển đổi từ raw data sang định dạng hình ảnh
-              const pixel16 = (0xffff & pixels[i + 1]) | ((0xffff & pixels[i]) << 8);
-              // Chuyển đổi màu
-              imgData.data[ln + 0] = ((pixel16 >> 8) & 0xF8);   // Red
-              imgData.data[ln + 1] = ((pixel16 >> 3) & 0xFC);   // Green
-              imgData.data[ln + 2] = ((pixel16 << 3) & 0xF8);   // Blue
-              imgData.data[ln + 3] = 255; // Alpha channel, có thể điều chỉnh nếu cần
-              ln += 4; // Di chuyển đến pixel tiếp theo trong imgData
-          }
-      }
-      ctx.putImageData(imgData, 0, 0);
-      // Tạo một Blob từ dữ liệu của canvas
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error('Không thể tạo Blob từ canvas'));
-            return;
-          }
-          // Tạo một URL đặc biệt cho Blob
-          const url = URL.createObjectURL(blob);
-          // Tạo một thẻ <a> để tạo và tải xuống file
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = name_picture;
-          document.body.appendChild(a);
-          // Kích hoạt sự kiện click trên thẻ <a> để tải xuống file
-          a.click();
-          // Xóa thẻ <a> và giải phóng URL
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          resolve();
-        }, '/png'); // Định dạng hình ảnh mong muốn (ở đây là PNG)
-      });
-    }
     function removeMessageElement()
     {
       if (globalMessageElement && globalMessageElement.parentNode) {

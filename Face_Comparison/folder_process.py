@@ -76,7 +76,7 @@ def find_unknown_people(filename, folder_store, folder_to_check, name_image, fs)
                 publish.single(topic, f"no_person_match", hostname=broker_address)
                 result_finger = f2.loop_mqtt_to_waiting_events()
                 if (result_finger >= 0):
-                    new_file_remove = f"image_store_{result_finger}.png"
+                    new_file_remove = f"image_store_{result_finger}.jpg"
                     print(f"remove file {new_file_remove}")
                     file_remove = os.path.join(folder_store, new_file_remove)
                     f2.delete_image(new_file_remove,fs)
