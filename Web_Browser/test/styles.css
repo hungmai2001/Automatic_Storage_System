@@ -10,8 +10,9 @@ body {
     padding: 0;
     font-family: Arial, sans-serif;
     background-image: url('background_image.jpg');
-    background-size: 1000px 1000px;
+    background-size: 70vw 100vh;
     background-position: center;
+    background-attachment: local;
     background-repeat: no-repeat;
     height: 100vh; /* Chiều cao là 100% của viewport */
 }
@@ -20,90 +21,122 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
-    max-width: 980px; /* Giới hạn chiều rộng của header */
+    padding: 0%;
+    max-width: 70vw; /* Giới hạn chiều rộng của header */
+    max-height: 5vh;
     margin: 0 auto; /* Căn giữa header */
-    background-color: rgba(231, 229, 229, 0.8); /* Màu nền của header */
+    background-color: rgba(37, 86, 95, 0.8); /* Màu nền của header */
+    top: 50%;
+    left: 50%;
+    
+    /* background-color: rgba(24, 153, 125, 0.8); */
 }
 
 .language-support {
-    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    border-radius: 20vw;
     overflow: hidden; /* Đảm bảo các phần tử không bị tràn ra ngoài khung */
+    max-height: 5vh;
+    flex-shrink: 0;
 }
 
 .language-support a {
-    display: inline-block;
-    padding: 5px 10px;
+    display: flex;
+    /* display: inline-block; */
+    padding: 0.5vw 1vh;
     text-decoration: none;
     font-weight: bold;
+    max-height: 5vh;
+    flex-shrink: 0;
 }
 
 .language-vie {
+    display: flex;
     background-color: #3fa8e6; /* Màu xanh cho VIE */
     color: white; /* Màu chữ trắng */
+    font-size: 1vw;
+    max-height: 5vh;
 }
 
 .language-eng {
+    display: flex;
     background-color: black; /* Màu đen cho ENG */
     color: white; /* Màu chữ trắng */
+    font-size: 1vw;
+    max-height: 5vh;
 }
 
 .language-support span {
-    padding: 0 5px; /* Khoảng cách giữa dấu phẩy */
+    display: flex;
+    align-items: center;
+    padding: 0 0.5vh; /* Khoảng cách giữa dấu phẩy */
+    max-height: 5vh;
 }
 
 
 .support {
     display: flex;
     align-items: center; /* Canh các phần tử theo chiều dọc */
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
-    background-color: white; /* Thêm màu trắng cho khung bo */
-    margin-right: -10px;
-    font-size: 15px;
+    border-top-left-radius: 1vw;
+    /* border-bottom-left-radius: 1vw; */
+    background-color: rgb(23, 168, 149); /* Thêm màu trắng cho khung bo */
+    margin-right: 0.1vw;
+    font-size: 1vw;
+    font-weight: bold;
+    max-height: 5vh;
 }
 
 .support img {
-    width: 25px;
-    height: 25px;
+    width: 2vw;
+    height: 2vw;
 }
 
 main {
     text-align: center;
-    max-width: 980px; /* Giới hạn chiều rộng của main */
-    margin: 5px auto; /* Căn giữa main */
+    max-width: 80vw; /* Giới hạn chiều rộng của main */
+    margin: 0.5vw auto; /* Căn giữa main */
 }
 
 .logo h1 {
-    font-size: 60px;
+    text-align: center;
+    font-size: 5vw;
     font-family: 'Algerian', sans-serif;
-    margin: 10px;
+    margin: 1vw;
+    top: 50%;
+    left: 50%;
 }
 
 .logo h2 {
+    text-align: center;
     color: rgb(235, 27, 44);
-    font-size: 26px;
+    font-size: 3vw;
     font-family: 'Bahnschrift SemiBold', sans-serif;
-    margin: 10px;
+    margin: 0.2vw;
     font-weight: bold; /* Để in đậm chữ */
+    top: 50%;
+    left: 50%;
 }
 
 .logo h3 {
+    text-align: center;
     color: rgb(44, 137, 243);
-    font-size: 20px;
+    font-size: 1.7vw;
     font-family: 'Bahnschrift SemiBold', sans-serif;
     margin: 0;
     font-weight: bold; /* Để in đậm chữ */
+    top: 50%;
+    left: 50%;
 }
 
 .status {
     max-width: 100%;
-    max-height: 40px;
-    padding: 5px;
-    border-radius: 2px;
-    margin-top: 10px;
-    margin-right: -10px;
-    margin-left: -10px;
+    max-height: 4vh;
+    padding: 1vw;
+    border-radius: 0.2vw;
+    margin-top: 1vh;
+    margin-right: -1vw;
+    margin-left: -1vw;
     align-items: center;
     display: flex; /* Sử dụng flexbox */
     justify-content: center; /* Căn giữa theo chiều ngang */
@@ -111,14 +144,14 @@ main {
 
 .status-box {
     max-width: 100%;
-    max-height: 40px;
+    max-height: 4vh;
     background-color: #dedede;
-    padding: 5px 5px;
-    border-radius: 5px;
+    padding: 0.5vw 0.5vh;
+    border-radius: 0.5vw;
     color: rgb(44, 56, 163);
     font-weight: bold; /* Để in đậm chữ */
     font-family: 'Bahnschrift SemiBold', sans-serif;
-    font-size: 20px;
+    font-size: 1.5vw;
     align-items: center;
     display: flex; /* Sử dụng flexbox */
     justify-content: center; /* Căn giữa theo chiều ngang */
@@ -127,34 +160,34 @@ main {
 .options {
     display: flex;
     justify-content: space-around;
-    margin-top: 20px;
+    margin-top: 8vw;
 }
 
 .option {
     background-color: #20a4d8;
-    padding: 10px 40px;
-    border-radius: 20px;
+    padding: 1vw 2vh;
+    border-radius: 1vw;
     display: inline-block;
-    margin: 0 10px;
+    margin: 0 0.5vw;
 }
 
 .option img {
-    width: 30px;
-    height: 30px;
+    width: 2vw;
+    height: 2vw;
     /* margin-bottom: 10px; */
     display: inline-block;
     border-radius: 50%; /* Bo tròn icon */
     background-color: white; /* Màu nền của icon */
-    padding: 5px; /* Khoảng cách giữa icon và khung tròn */
+    padding: 0.5vw; /* Khoảng cách giữa icon và khung tròn */
 }
 
 .option p {
     margin: 0;
     display: inline-block; /* Hiển thị trên cùng một dòng */
     vertical-align: middle; /* Canh giữa theo chiều dọc */
-    font-size: 40px; /* Kích thước chữ */
+    font-size: 2vw; /* Kích thước chữ */
     font-family: 'Segoe UI Black', sans-serif;
     font-weight: bold; /* Đặt đậm chữ */
-    margin-left: 10px; /* Khoảng cách giữa icon và chữ */
-    text-shadow: 0 0 3px white; /* Thêm viền trắng cho chữ */
+    margin-left: 0.1vw; /* Khoảng cách giữa icon và chữ */
+    text-shadow: 0 0 0.5vw white; /* Thêm viền trắng cho chữ */
 }

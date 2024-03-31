@@ -2,7 +2,9 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống gửi đồ bằng khuôn mặt</title>
+    <title>Tủ đồ thông minh</title>
+    <link rel="stylesheet" href="test/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,19 +25,53 @@
     <script src="mqttws31.js"></script>
   </head>
   <body onload="on_load();">
-    <div id="connect">
+    <div id="connect" style="text-align: center;">
       <input type="button" value="connect server" onclick="on_connect_server();">
       <input type="text" id="connect_input" name="connect_input" value="esp32-camera.local">
     </div>
-    <div id="take">
-      <input type="button" value="GIỮ ĐỒ" onclick="on_store_item();" id="store">
-      <input type="button" value="LẤY ĐỒ" onclick="on_get_item();" id="get">
+      <div id="take">
+        <header>
+          <div class="language-support">
+              <a href="#" class="language-vie">VIE</a>
+              <span>|</span>
+              <a href="#" class="language-eng">ENG</a>
+          </div>
+          
+          <div class="support">
+              <img src="test/headphone_icon.png" alt="Hỗ trợ">
+              <p>Hỗ trợ</p>
+          </div>
+      </header>
+      <main>
+          <div class="logo">
+              <h1>ĐỒ ÁN TỐT NGHIỆP</h1>
+              <h2>Tủ đồ thông minh</h2>
+              <h3>Sử dụng nhận diện khuôn mặt</h3>
+          </div>
+          <div class="status">
+              <div class="status-box">
+                  <p> Số ô tủ: 7 | Số ô tủ trống: <span id="empty-count">03</span></p>
+              </div>
+          </div>
+          <div class="options">
+              <button class="option" onclick="on_store_item();" id="store">
+                  <img src="test/send_icon.png" alt="Gửi đồ">
+                  <p>GỬI ĐỒ</p>
+              </button>
+              <button class="option" onclick="on_get_item();" id="get">
+                  <img src="test/receive_icon.png" alt="Lấy đồ">
+                  <p>LẤY ĐỒ</p>
+              </button>
+          </div>
+      </main>
+      <!-- <input type="button" value="GIỮ ĐỒ" onclick="on_store_item();" id="store">
+      <input type="button" value="LẤY ĐỒ" onclick="on_get_item();" id="get"> -->
     </div>
     <div id="fail" style="display:none;">
       Server connection fail.
     </div>
-    <div>
-      <canvas id="canvas_image" width="640" height="480"></canvas>
+    <div style="text-align: center;">
+      <canvas id="canvas_image" width="540" height="300"></canvas>
     </div>
   </body>
   <script defer src="face-api.min.js"></script>
@@ -54,8 +90,10 @@
     var comparefinger = "compare_finger";
     var topicToSend = "/topic/hungmai_wb_publish";
     var number = 0;
+    var number_empty = 0;
     var faceDetectionCount = 0;
     var faceDetectedLastTime = false;
+    var emptyCountElement = document.getElementById("empty-count");
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
     // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
@@ -100,8 +138,11 @@
           var matches = message.payloadString.match(/\d+/);
           console.log("matches" + matches);
           if (matches) {
-            number = parseInt(matches[0]);
+            number = parseInt(matches[0]); 
           }
+          number_empty = 7 - number;
+          // Cập nhật nội dung của phần tử chứa số liệu
+          emptyCountElement.textContent = number_empty;
           document.getElementById('take').style.display = 'inline';
           document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
           if (number < 7)
@@ -147,6 +188,9 @@
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+              // Cập nhật nội dung của phần tử chứa số liệu
+              number_empty = number_empty - 1;
+              emptyCountElement.textContent = number_empty;
           }, displayMessageTimeout);
         }
         // Nhận message đã detect được khuôn mặt người và hiện lại các option
@@ -157,6 +201,9 @@
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+              // Cập nhật nội dung của phần tử chứa số liệu
+              number_empty = number_empty + 1;
+              emptyCountElement.textContent = number_empty;
           }, displayMessageTimeout);
           get_item = false;
           status_ = false;
@@ -177,7 +224,7 @@
         else if (message.payloadString.includes("no_person_match")) {
           removeMessageElement();
           console.log("Chuỗi '" + "no_person_match" + "' được tìm thấy trong chuỗi '");
-          displayMessage_global("VUI LÒNG NHẬP VÂN TAY ĐỂ XÁC MINH DO HÌNH ẢNH CỦA BẠN KHÔNG KHỚP........");
+          displayMessage_global("VUI LÒNG NHẬP VÂN TAY ĐỂ XÁC MINH ........");
           publishToDifferentTopic(comparefinger, topicToSend);
         }
         else {
@@ -277,6 +324,7 @@
         var recv_image_data = new Uint8Array(recv_data.data);
         var canvas_image = document.getElementById('canvas_image');
         var ctx = canvas_image.getContext('2d');
+        ctx.globalCompositeOperation = 'source-over';
         var image = new Image();
         image.src = 'data:image/jpeg;base64,' + recv_data.data;
         image.onload = async function() {
@@ -286,9 +334,12 @@
           if (faceDetectionCount < count_image - 1) {
             detections.forEach(detection => {
               const { x, y, width, height } = detection.box;
-              ctx.strokeStyle = 'white';
+              ctx.beginPath();
+              ctx.strokeStyle = 'green';
+              ctx.rect(x, y, width, height);
               ctx.lineWidth = 10;
-              ctx.strokeRect(x, y, width, height);
+              ctx.stroke();
+              ctx.closePath();
             });
           }
           // Tăng biến đếm khi có khuôn mặt được phát hiện
@@ -341,13 +392,14 @@
         await faceapi.nets.tinyFaceDetector.dispose();
       }
     }
-    
+
     function clearBoundingBoxes() {
         var canvas = document.getElementById('canvas_image');
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         // Xóa toàn bộ canvas
-        ctx.fillStyle = 'white';
+        ctx.globalCompositeOperation = 'destination-out';
+        // ctx.fillStyle = 'transparent';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -365,13 +417,22 @@
     function displayMessage(message, no_timeout, timeout)
     {
       var messageElement = document.createElement('div');
-      messageElement.style.fontSize = '20px';
+      messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
+      messageElement.style.fontSize = '1.3vw';
       messageElement.style.fontWeight = 'bold';
-      messageElement.style.color = 'green';
-      messageElement.style.position = 'fixed';
+      messageElement.style.color = 'black';
+      messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
+      messageElement.style.backgroundColor = '#3fa8e6';
+      messageElement.style.position = 'absolute';
       messageElement.style.top = '50%';
       messageElement.style.left = '50%';
+      messageElement.style.display = 'flex';
+      messageElement.style.padding = '2vw';
       messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
+      messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
+      messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
+      messageElement.style.margin = '1vw';
       messageElement.innerHTML = message;
 
       document.body.appendChild(messageElement);
@@ -386,19 +447,28 @@
     function displayMessage_global(message)
     {
       var messageElement = document.createElement('div');
-      messageElement.style.fontSize = '20px';
+      messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
+      messageElement.style.fontSize = '1.3vw';
       messageElement.style.fontWeight = 'bold';
-      messageElement.style.color = 'green';
-      messageElement.style.position = 'fixed';
+      messageElement.style.color = 'black';
+      messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
+      messageElement.style.backgroundColor = '#3fa8e6';
+      messageElement.style.position = 'absolute';
       messageElement.style.top = '50%';
       messageElement.style.left = '50%';
+      messageElement.style.display = 'flex';
+      messageElement.style.padding = '1.5vw';
       messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
+      messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
+      messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
+      messageElement.style.margin = '1vw';
       messageElement.innerHTML = message;
 
       document.body.appendChild(messageElement);
       globalMessageElement = messageElement;
     }
-
+    
     function removeMessageElement()
     {
       if (globalMessageElement && globalMessageElement.parentNode) {

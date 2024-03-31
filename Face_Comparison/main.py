@@ -145,6 +145,7 @@ if __name__ == "__main__":
                 if s > 0:
                     manager.remove_number(s)
                     print("Remove ok")
+                    number_img = 0
             count = manager.count_number()
             if (count >= max_number_image):
                 time.sleep(5)
