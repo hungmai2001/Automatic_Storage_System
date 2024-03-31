@@ -98,6 +98,7 @@ def images_in_folder(folder_store, name_image):
 if __name__ == "__main__":
     # Xóa ảnh trong store folder
     f1.remove_file_in_folder(folder_store)
+    f1.remove_file_in_folder_f(folder_to_check)
     # Clone image từ database
     f2.get_image_from_database(fs, db, folder_store)
     # # Đếm số lượng hình ảnh trong store folder
@@ -128,7 +129,7 @@ if __name__ == "__main__":
                     if new_file_move:
                         count = f1.count_images_in_folder(folder_store)
                         manager.add_number(image_count)
-                        publish.single(topic,"save_finger_ok", hostname=broker_address)
+                        publish.single(topic,f"save_finger_ok_{image_count}", hostname=broker_address)
                         # publish.single(topic,f"save_image_{count}", hostname=broker_address)
 
                         #Loop để chờ data finger từ esp32-cam

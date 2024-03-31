@@ -29,7 +29,7 @@ header {
     top: 50%;
     left: 50%;
     
-    /* background-color: rgba(24, 153, 125, 0.8); */
+    /* background-color: rgba(248, 185, 185, 0.8); */
 }
 
 .language-support {
@@ -109,7 +109,7 @@ main {
 
 .logo h2 {
     text-align: center;
-    color: rgb(235, 27, 44);
+    color: rgb(252, 0, 0);
     font-size: 3vw;
     font-family: 'Bahnschrift SemiBold', sans-serif;
     margin: 0.2vw;

@@ -110,6 +110,16 @@ def remove_file_in_folder(folder_store):
         print(f"{filepath} deleted.")
     return None
 
+# Xóa ảnh trong store folder
+def remove_file_in_folder_f(folder_store):
+    # Lấy danh sách các tệp trong thư mục
+    image_files = [f for f in os.listdir(folder_store) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    for file in image_files:
+        filepath = os.path.join(folder_store, file)
+        os.remove(filepath)
+        print(f"{filepath} deleted.")
+    return None
+
 # Đếm số lượng tệp hình trong thư mục lưu trữ
 def count_images_in_folder(folder_store):
     image_files = [f for f in os.listdir(folder_store) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]

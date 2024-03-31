@@ -76,7 +76,7 @@
   </body>
   <script defer src="face-api.min.js"></script>
   <script>
-    var count_image = 10;
+    var count_image = 6;
     var web_socket = null;
     var store_item = false;
     var get_item = false;
@@ -152,7 +152,7 @@
           else
           {
             document.getElementById('store').style.display = 'none'; // Hiển thị lại nút "GIỮ ĐỒ"
-            displayMessage_global("HẾT CỬA. KHÔNG THỂ GIỮ ĐỒ. CHỈ CÓ THỂ LẤY ĐỒ!");
+            displayMessage_global("Đã hết cửa trống!", "white");
           }
           console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi");
         }
@@ -163,7 +163,7 @@
           document.getElementById('store').style.display = 'none'; // Ẩn nút GIỮ ĐỒ
           document.getElementById('get').style.display = 'inline'; // Ẩn nút LẤY ĐỒ
           removeMessageElement();
-          displayMessage_global("HẾT CỬA. KHÔNG THỂ GIỮ ĐỒ. CHỈ CÓ THỂ LẤY ĐỒ!");
+          displayMessage_global("Đã hết cửa trống!", "white");
         }
         // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
         else if (message.payloadString.includes("save_image_")) {
@@ -177,14 +177,19 @@
           }
           document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
           document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
-          displayMessage_global("VUI LÒNG NHẬP VÂN TAY........");
+          displayMessage_global("Vui lòng nhập vân tay...", "#C8C905");
           publishToDifferentTopic(messageToSend + number, topicToSend);
         }
         // Nhận message đã lưu finger thành công và hiện lại các option
         else if (message.payloadString.includes("save_finger_ok")) {
+          var matches = message.payloadString.match(/\d+/);
+          console.log("matches_" + matches);
+          if (matches) {
+            number = parseInt(matches[0]); 
+          }
           removeMessageElement();
           console.log("Chuỗi '" + "save_finger_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
-          displayMessage("THÔNG TIN CỦA BẠN ĐÃ ĐƯỢC LƯU TRỮ. CỬA ĐÃ MỞ.", 0, displayMessageTimeout);
+          displayMessage("Cửa số " + number + " đã mở!", 0, displayMessageTimeout, "white");
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
@@ -194,10 +199,15 @@
           }, displayMessageTimeout);
         }
         // Nhận message đã detect được khuôn mặt người và hiện lại các option
-        else if (message.payloadString.includes("image_detect")) {
+        else if (message.payloadString.includes("image_detect_")) {
+          var matches = message.payloadString.match(/\d+/);
+          console.log("matches_" + matches);
+          if (matches) {
+            number = parseInt(matches[0]); 
+          }
           removeMessageElement();
-          console.log("Chuỗi '" + "image_detect" + "' được tìm thấy trong chuỗi '");
-          displayMessage("CỬA ĐÃ MỞ, VUI LÒNG LẤY ĐỒ!!!", 0, displayMessageTimeout);
+          console.log("Chuỗi '" + "image_detect_" + "' được tìm thấy trong chuỗi '");
+          displayMessage("Cửa số " + number + " đã mở!", 0, displayMessageTimeout, "white");
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
@@ -212,7 +222,7 @@
         else if (message.payloadString.includes("no_person_fingerprint")) {
           removeMessageElement();
           console.log("Chuỗi '" + "no_person_fingerprint" + "' được tìm thấy trong chuỗi '");
-          displayMessage("KHÔNG CÓ THÔNG TIN. VUI LÒNG THỬ LẠI!!!", 0, displayMessageTimeout);
+          displayMessage("Không có thông tin. Vui lòng thử lại.", 0, displayMessageTimeout, "white");
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
@@ -224,7 +234,7 @@
         else if (message.payloadString.includes("no_person_match")) {
           removeMessageElement();
           console.log("Chuỗi '" + "no_person_match" + "' được tìm thấy trong chuỗi '");
-          displayMessage_global("VUI LÒNG NHẬP VÂN TAY ĐỂ XÁC MINH ........");
+          displayMessage_global("Vui lòng nhập vân tay để xác minh...", "#C8C905");
           publishToDifferentTopic(comparefinger, topicToSend);
         }
         else {
@@ -323,6 +333,7 @@
         faceapi.tf.engine().startScope();
         var recv_image_data = new Uint8Array(recv_data.data);
         var canvas_image = document.getElementById('canvas_image');
+        canvas_image.style.marginTop = '-9vw';
         var ctx = canvas_image.getContext('2d');
         ctx.globalCompositeOperation = 'source-over';
         var image = new Image();
@@ -331,13 +342,13 @@
           ctx.drawImage(image, 0, 0);
           await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
           const detections = await faceapi.detectAllFaces(canvas_image, new faceapi.TinyFaceDetectorOptions());
-          if (faceDetectionCount < count_image - 1) {
+          if (faceDetectionCount < count_image - 3) {
             detections.forEach(detection => {
               const { x, y, width, height } = detection.box;
               ctx.beginPath();
-              ctx.strokeStyle = 'green';
+              ctx.strokeStyle = '#37D3D4';
               ctx.rect(x, y, width, height);
-              ctx.lineWidth = 10;
+              ctx.lineWidth = 2;
               ctx.stroke();
               ctx.closePath();
             });
@@ -378,11 +389,11 @@
             publishToDifferentTopic(downloaded_image, topicToSend);
             clearBoundingBoxes();
             if (true == store_item) {
-              displayMessage_global("KHUÔN MẶT CỦA BẠN ĐANG ĐƯỢC LƯU TRỮ........");
+              displayMessage_global("Hình ảnh của bạn đang được lưu trữ.", "white");
               store_item = false;
             }
             else if (true == get_item) {
-              displayMessage_global("THÔNG TIN CỦA BẠN ĐANG ĐƯỢC XỬ LÝ........");
+              displayMessage_global("Thông tin của bạn đang được xử lý.", "white");
               get_item = false;
             }
           }
@@ -414,15 +425,15 @@
       document.body.removeChild(a);
     }
 
-    function displayMessage(message, no_timeout, timeout)
+    function displayMessage(message, no_timeout, timeout, string_color)
     {
       var messageElement = document.createElement('div');
       messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
-      messageElement.style.fontSize = '1.3vw';
+      messageElement.style.fontSize = '1.7vw';
       messageElement.style.fontWeight = 'bold';
-      messageElement.style.color = 'black';
+      messageElement.style.color = string_color;
       messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
-      messageElement.style.backgroundColor = '#3fa8e6';
+      messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
       messageElement.style.top = '50%';
       messageElement.style.left = '50%';
@@ -444,15 +455,15 @@
       }
     }
 
-    function displayMessage_global(message)
+    function displayMessage_global(message, string_color)
     {
       var messageElement = document.createElement('div');
       messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
-      messageElement.style.fontSize = '1.3vw';
+      messageElement.style.fontSize = '1.7vw';
       messageElement.style.fontWeight = 'bold';
-      messageElement.style.color = 'black';
+      messageElement.style.color = string_color;
       messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
-      messageElement.style.backgroundColor = '#3fa8e6';
+      messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
       messageElement.style.top = '50%';
       messageElement.style.left = '50%';
