@@ -31,7 +31,7 @@ async def send_signal(signal):
         print("WebSocket connection closed.")
 
 # Tìm khuôn mặt người trong folder và gửi kết quả đến ESP32-CAM, remove hình ảnh
-def find_unknown_people(filename, folder_store, folder_to_check, name_image, fs):
+def find_unknown_people(filename, folder_store, folder_to_check, name_image, fs, number_image):
     global num_img
     filepath = os.path.join(folder_to_check, filename)
     # Kiểm tra xem tệp có phải là ảnh không
@@ -70,6 +70,23 @@ def find_unknown_people(filename, folder_store, folder_to_check, name_image, fs)
                     num_img = match
             elif count_occurrences >= 1:
                 print("So many people!!!!!")
+                # Tìm tất cả các số trong chuỗi sử dụng regex
+                numbers = re.findall(r'\d+', result.stdout)
+                # Gán các số vào một chuỗi mới
+                result_string = "people_"+ '_'.join(numbers)
+                # Publish đến MQTT
+                publish.single(topic_esp, f"{result_string}", hostname=broker_address)
+                #Remove file
+                for number in numbers:
+                    #Remove file
+                    new_file_remove = f"image_store_{number}.jpg"
+                    file_remove = os.path.join(folder_store, new_file_remove)
+                    f2.delete_image(new_file_remove,fs)
+                    print(f"remove file {file_remove}")
+                    os.remove(file_remove)
+                    #Remove number image
+                    f_main.manager.remove_number(int(number), number_image)
+                    print(f"Remove {number} ok")
             else:
                 print(f"No person detected in {filename}.")
                 # Publish đến MQTT

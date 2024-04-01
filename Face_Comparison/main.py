@@ -41,8 +41,7 @@ class NumberSequenceManager:
         """Thêm một số vào dãy số."""
         number_image[int(number)] = 1
         # self.sequence.append(number)
-    def remove_number(self, number):
-        global number_image
+    def remove_number(self, number,number_image):
         """Xóa một số khỏi dãy số."""
         print(f"number_image: {number_image}")
         if number in number_image:
@@ -140,11 +139,11 @@ if __name__ == "__main__":
                     else:
                         print("Error")
             elif "image_get" in file_check:
-                number_img = f1.find_unknown_people(file_check, folder_store, folder_to_check, name_image, fs)
+                number_img = f1.find_unknown_people(file_check, folder_store, folder_to_check, name_image, fs, number_image)
                 print(f"number_img: {number_img}")
                 s = int(number_img)
                 if s > 0:
-                    manager.remove_number(s)
+                    manager.remove_number(s, number_image)
                     print("Remove ok")
                     number_img = 0
             count = manager.count_number()

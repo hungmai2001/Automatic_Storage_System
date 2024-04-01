@@ -46,7 +46,7 @@
           <div class="logo">
               <h1>ĐỒ ÁN TỐT NGHIỆP</h1>
               <h2>Tủ đồ thông minh</h2>
-              <h3>Sử dụng nhận diện khuôn mặt</h3>
+              <h3>Sử dụng nhận diện khuôn mặt và vân tay</h3>
           </div>
           <div class="status">
               <div class="status-box">
@@ -152,7 +152,7 @@
           else
           {
             document.getElementById('store').style.display = 'none'; // Hiển thị lại nút "GIỮ ĐỒ"
-            displayMessage_global("Đã hết cửa trống!", "white");
+            displayMessage_global("Đã hết tủ trống!", "white");
           }
           console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi");
         }
@@ -163,7 +163,7 @@
           document.getElementById('store').style.display = 'none'; // Ẩn nút GIỮ ĐỒ
           document.getElementById('get').style.display = 'inline'; // Ẩn nút LẤY ĐỒ
           removeMessageElement();
-          displayMessage_global("Đã hết cửa trống!", "white");
+          displayMessage_global("Đã hết tủ trống!", "white");
         }
         // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
         else if (message.payloadString.includes("save_image_")) {
@@ -189,7 +189,7 @@
           }
           removeMessageElement();
           console.log("Chuỗi '" + "save_finger_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
-          displayMessage("Cửa số " + number + " đã mở!", 0, displayMessageTimeout, "white");
+          displayMessage("Tủ số " + number + " đã mở!", 0, displayMessageTimeout, "white");
           setTimeout(() => {
               document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
@@ -213,6 +213,26 @@
               document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
               // Cập nhật nội dung của phần tử chứa số liệu
               number_empty = number_empty + 1;
+              emptyCountElement.textContent = number_empty;
+          }, displayMessageTimeout);
+          get_item = false;
+          status_ = false;
+        }
+        // Nhận message đã detect được khuôn mặt người và hiện lại các option (case nhiều khuôn mặt)
+        else if (message.payloadString.includes("detect_")) {
+          // Tìm tất cả các số trong chuỗi sử dụng regex
+          var numbers = message.payloadString.match(/\d+/g);
+
+          // Gán các số vào một chuỗi mới
+          var resultString = numbers.join(', ');
+          removeMessageElement();
+          console.log("Chuỗi '" + "detect_" + "' được tìm thấy trong chuỗi '");
+          displayMessage("Tủ số " + resultString + " đã mở!", 0, displayMessageTimeout, "white");
+          setTimeout(() => {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị lại nút "GIỮ ĐỒ"
+              document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+              // Cập nhật nội dung của phần tử chứa số liệu
+              number_empty = number_empty + numbers.length;
               emptyCountElement.textContent = number_empty;
           }, displayMessageTimeout);
           get_item = false;
@@ -333,7 +353,7 @@
         faceapi.tf.engine().startScope();
         var recv_image_data = new Uint8Array(recv_data.data);
         var canvas_image = document.getElementById('canvas_image');
-        canvas_image.style.marginTop = '-9vw';
+        canvas_image.style.marginTop = '-8.5vw';
         var ctx = canvas_image.getContext('2d');
         ctx.globalCompositeOperation = 'source-over';
         var image = new Image();
@@ -436,10 +456,10 @@
       messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
       messageElement.style.top = '50%';
-      messageElement.style.left = '50%';
+      messageElement.style.left = '49%';
       messageElement.style.display = 'flex';
       messageElement.style.padding = '2vw';
-      messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.style.transform = 'translate(-49%, -50%)';
       messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
       messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
       messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
@@ -466,10 +486,10 @@
       messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
       messageElement.style.top = '50%';
-      messageElement.style.left = '50%';
+      messageElement.style.left = '49%';
       messageElement.style.display = 'flex';
       messageElement.style.padding = '1.5vw';
-      messageElement.style.transform = 'translate(-50%, -50%)';
+      messageElement.style.transform = 'translate(-49%, -50%)';
       messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
       messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
       messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
