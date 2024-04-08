@@ -46,10 +46,10 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, bool * fir_cap)
 int get_sequence_number(const char *str, const char *pattern);
 bool downloaded_image = false;
 // Store wi-fi credentials
-// char ssid[32] = "Trinh";
-// char password[64] = "0333755401 ";
-char ssid[32] = "Hungmai";
-char password[64] = "hungmaixx";
+char ssid[32] = "Trinh";
+char password[64] = "0333755401 ";
+// char ssid[32] = "Hungmai";
+// char password[64] = "hungmaixx";
 
 
 static void log_error_if_nonzero(const char *message, int error_code)
@@ -371,7 +371,7 @@ void app_main() {
 		ESP_LOGE(TAG, "Failed to init pins: %s", esp_err_to_name(err));
 		return;
 	}
-	
+    
 	//Create mutex
 	g_handle_image = xSemaphoreCreateMutex();
 	// Start web server
