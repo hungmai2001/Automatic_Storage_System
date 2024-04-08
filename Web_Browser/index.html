@@ -76,7 +76,7 @@
   </body>
   <script defer src="face-api.min.js"></script>
   <script>
-    var count_image = 6;
+    var count_image = 20;
     var web_socket = null;
     var store_item = false;
     var get_item = false;
@@ -353,7 +353,7 @@
         faceapi.tf.engine().startScope();
         var recv_image_data = new Uint8Array(recv_data.data);
         var canvas_image = document.getElementById('canvas_image');
-        canvas_image.style.marginTop = '-8.5vw';
+        canvas_image.style.marginTop = '10px';
         var ctx = canvas_image.getContext('2d');
         ctx.globalCompositeOperation = 'source-over';
         var image = new Image();
@@ -361,9 +361,8 @@
         image.onload = async function() {
           ctx.drawImage(image, 0, 0);
           await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
-          const detections = await faceapi.detectAllFaces(canvas_image, new faceapi.TinyFaceDetectorOptions());
-          if (faceDetectionCount < count_image - 3) {
-            detections.forEach(detection => {
+          const detection = await faceapi.detectSingleFace(canvas_image, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3}));
+          if (faceDetectionCount < count_image - 3 && detection !== undefined) {
               const { x, y, width, height } = detection.box;
               ctx.beginPath();
               ctx.strokeStyle = '#37D3D4';
@@ -371,23 +370,22 @@
               ctx.lineWidth = 2;
               ctx.stroke();
               ctx.closePath();
-            });
           }
-          // Tăng biến đếm khi có khuôn mặt được phát hiện
-          if (detections.length > 0) {
-            if (!faceDetectedLastTime) {
-              // Nếu có phát hiện khuôn mặt sau khi không phát hiện ở lần trước
-              // Thì đặt lại biến đếm về 1
-              faceDetectionCount = 0;
-            } else {
-              // Nếu vẫn phát hiện khuôn mặt liên tục
-              faceDetectionCount++;
-            }
-            faceDetectedLastTime = true;
+          if( detection !== undefined) {
+              // Tăng biến đếm khi có khuôn mặt được phát hiện
+              if (!faceDetectedLastTime) {
+                  // Nếu có phát hiện khuôn mặt sau khi không phát hiện ở lần trước
+                  // Thì đặt lại biến đếm về 1
+                  faceDetectionCount = 0;
+              } else {
+                  // Nếu vẫn phát hiện khuôn mặt liên tục
+                  faceDetectionCount++;
+              }
+              faceDetectedLastTime = true;
           } else {
-            // Nếu không phát hiện khuôn mặt
-            faceDetectionCount = 0;
-            faceDetectedLastTime = false;
+              // Nếu không phát hiện khuôn mặt
+              faceDetectionCount = 0;
+              faceDetectedLastTime = false;
           }
 
           // Kiểm tra nếu có 10 lần phát hiện liên tiếp
@@ -485,11 +483,11 @@
       messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
       messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
-      messageElement.style.top = '50%';
-      messageElement.style.left = '49%';
+      messageElement.style.top = '65%';
+      messageElement.style.left = '48.5%';
       messageElement.style.display = 'flex';
       messageElement.style.padding = '1.5vw';
-      messageElement.style.transform = 'translate(-49%, -50%)';
+      messageElement.style.transform = 'translate(-48.5%, -65%)';
       messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
       messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
       messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn

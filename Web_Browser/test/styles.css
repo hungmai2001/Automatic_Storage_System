@@ -161,7 +161,7 @@ main {
 .options {
     display: flex;
     justify-content: space-around;
-    margin-top: 8vw;
+    /* margin-top: 2vw; */
 }
 
 .option {
