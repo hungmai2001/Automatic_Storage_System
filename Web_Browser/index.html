@@ -62,6 +62,14 @@
                   <img src="test/receive_icon.png" alt="Lấy đồ">
                   <p>LẤY ĐỒ</p>
               </button>
+              <button class="option" onclick="on_download_image();" id="download">
+                <img src="test/receive_icon.png" alt="Tiếp tục">
+                <p>TIẾP TỤC</p>
+              </button>
+              <button class="option" onclick="on_back();" id="back">
+                <img src="test/receive_icon.png" alt="Trở lại">
+                <p>TRỞ LẠI</p>
+              </button>
           </div>
       </main>
       <!-- <input type="button" value="GIỮ ĐỒ" onclick="on_store_item();" id="store">
@@ -93,6 +101,8 @@
     var number_empty = 0;
     var faceDetectionCount = 0;
     var faceDetectedLastTime = false;
+    var text_input = "capture";
+    var count_print_message = 0;
     var emptyCountElement = document.getElementById("empty-count");
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
@@ -135,6 +145,8 @@
         console.log("Received message: " + message.payloadString);
         // Bắt đầu chạy ứng dụng
         if (message.payloadString.includes("start_count_")) {
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+          document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
           var matches = message.payloadString.match(/\d+/);
           console.log("matches" + matches);
           if (matches) {
@@ -261,7 +273,6 @@
           console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '");
         }
     }
-
     function on_load()
     {
       document.getElementById('take').style.display = 'none';
@@ -311,16 +322,51 @@
     function on_store_item()
     {
       store_item = true;
-      var text_input = "capture";
       web_socket.send(text_input);
     }
 
     function on_get_item()
     {
       get_item = true;
-      var text_input = "capture";
       removeMessageElement();
       web_socket.send(text_input);
+    }
+
+    function on_download_image()
+    {
+      count_print_message = 0;
+      console.log("on_download_image");
+      document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+      document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
+      removeMessageElement();
+      if (true == store_item) {
+        // Gọi hàm để thực hiện tải xuống hình ảnh
+        downloadImage(canvas_image.toDataURL('image/jpeg'), "image_store.jpg");
+        displayMessage_global("Hình ảnh của bạn đang được lưu trữ.", "white");
+        store_item = false;
+      }
+      else if (true == get_item) {
+        // Gọi hàm để thực hiện tải xuống hình ảnh
+        downloadImage(canvas_image.toDataURL('image/jpeg'), "image_get.jpg");
+        displayMessage_global("Thông tin của bạn đang được xử lý.", "white");
+        get_item = false;
+      }
+      clearBoundingBoxes();
+      faceDetectionCount = 0;
+    }
+
+    function on_back()
+    {
+      count_print_message = 0;
+      console.log("on_back");
+      document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+      document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
+      removeMessageElement();
+      clearBoundingBoxes();
+      faceDetectionCount = 0;
+      document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
+      document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+
     }
 
     function on_error(recv_data)
@@ -328,6 +374,7 @@
       console.log("on_error");
       document.getElementById('take').style.display = 'none';
       document.getElementById('fail').style.display = 'inline';
+      removeMessageElement();
     }
 
     function on_close_connection() {
@@ -335,7 +382,8 @@
       if (web_socket !== null) {
           web_socket.close();
           web_socket = null;
-        }
+      }
+      removeMessageElement();
     }
     function publishToDifferentTopic(message, topic) {
         var message = new Paho.MQTT.Message(message);
@@ -345,6 +393,7 @@
     async function on_message(recv_data)
     {
       // console.log(recv_data.data);
+      // console.log("on_message");
       //Get image with "Giữ Đồ" option, display it and save image if the face is detected
       if ( (true == store_item) || (true == get_item))
       {
@@ -390,30 +439,18 @@
 
           // Kiểm tra nếu có 10 lần phát hiện liên tiếp
           if (faceDetectionCount >= count_image) {
-            if (true == store_item) {
-              // Gọi hàm để thực hiện tải xuống hình ảnh
-              downloadImage(canvas_image.toDataURL('image/jpeg'), "image_store.jpg");
+            document.getElementById('back').style.display = 'inline'; // hiển thị nút "Trở lại"
+            document.getElementById('download').style.display = 'inline'; // hiển thị nút "Tiếp tục"
+            count_print_message = count_print_message + 1;
+            if (count_print_message == 1)
+            {
+              displayMessage_global_image("Bạn có muốn tiếp tục với hình ảnh bên dưới?", "#C8C905");
             }
-            else if (true == get_item) {
-              // Gọi hàm để thực hiện tải xuống hình ảnh
-              downloadImage(canvas_image.toDataURL('image/jpeg'), "image_get.jpg");
-            }
-            // Đặt lại biến đếm về 0 sau khi tải xuống
-            faceDetectionCount = 0;
             console.log("Downloaded image!!!");
             // Gửi thông tin đã lưu image đến esp32-cam
-            var text_input = "downloaded_image";
-            web_socket.send(text_input);
+            var text_input_1 = "downloaded_image";
+            web_socket.send(text_input_1);
             publishToDifferentTopic(downloaded_image, topicToSend);
-            clearBoundingBoxes();
-            if (true == store_item) {
-              displayMessage_global("Hình ảnh của bạn đang được lưu trữ.", "white");
-              store_item = false;
-            }
-            else if (true == get_item) {
-              displayMessage_global("Thông tin của bạn đang được xử lý.", "white");
-              get_item = false;
-            }
           }
         }
         // Dispose WebGLTexture
@@ -447,21 +484,21 @@
     {
       var messageElement = document.createElement('div');
       messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
-      messageElement.style.fontSize = '1.7vw';
+      messageElement.style.fontSize = '1.6vw';
       messageElement.style.fontWeight = 'bold';
       messageElement.style.color = string_color;
       messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
       messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
-      messageElement.style.top = '50%';
-      messageElement.style.left = '49%';
+      messageElement.style.top = '42%';
+      messageElement.style.left = '50%';
       messageElement.style.display = 'flex';
-      messageElement.style.padding = '2vw';
-      messageElement.style.transform = 'translate(-49%, -50%)';
-      messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
-      messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
-      messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
-      messageElement.style.margin = '1vw';
+      messageElement.style.padding = '0.5vw';
+      messageElement.style.transform = 'translate(-50%, -42%)';
+      // messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
+      // messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
+      // messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
+      // messageElement.style.margin = '1vw';
       messageElement.innerHTML = message;
 
       document.body.appendChild(messageElement);
@@ -477,21 +514,46 @@
     {
       var messageElement = document.createElement('div');
       messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
-      messageElement.style.fontSize = '1.7vw';
+      messageElement.style.fontSize = '1.6vw';
       messageElement.style.fontWeight = 'bold';
       messageElement.style.color = string_color;
       messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
       messageElement.style.backgroundColor = '#2B3252';
       messageElement.style.position = 'absolute';
-      messageElement.style.top = '65%';
-      messageElement.style.left = '48.5%';
+      messageElement.style.top = '42%';
+      messageElement.style.left = '50%';
       messageElement.style.display = 'flex';
-      messageElement.style.padding = '1.5vw';
-      messageElement.style.transform = 'translate(-48.5%, -65%)';
-      messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
-      messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
-      messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
-      messageElement.style.margin = '1vw';
+      messageElement.style.padding = '0.5vw';
+      messageElement.style.transform = 'translate(-50%, -42%)';
+      // messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
+      // messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
+      // messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
+      // messageElement.style.margin = '1vw';
+      messageElement.innerHTML = message;
+
+      document.body.appendChild(messageElement);
+      globalMessageElement = messageElement;
+    }
+
+    function displayMessage_global_image(message, string_color)
+    {
+      var messageElement = document.createElement('div');
+      messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
+      messageElement.style.fontSize = '1.6vw';
+      messageElement.style.fontWeight = 'bold';
+      messageElement.style.color = string_color;
+      messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
+      messageElement.style.backgroundColor = '#2B3252';
+      messageElement.style.position = 'absolute';
+      messageElement.style.top = '42%';
+      messageElement.style.left = '50%';
+      messageElement.style.display = 'flex';
+      messageElement.style.padding = '0.5vw';
+      messageElement.style.transform = 'translate(-50%, -42%)';
+      // messageElement.style.maxWidth = '80vw'; // Đặt chiều rộng tối đa cho thông báo
+      // messageElement.style.maxHeight = '80vh'; // Đặt chiều cao tối đa cho thông báo
+      // messageElement.style.overflow = 'auto'; // Bật thanh cuộn khi thông báo quá lớn
+      // messageElement.style.margin = '1vw';
       messageElement.innerHTML = message;
 
       document.body.appendChild(messageElement);
@@ -501,7 +563,7 @@
     function removeMessageElement()
     {
       if (globalMessageElement && globalMessageElement.parentNode) {
-        console.log("globalMessageElement");
+        console.log("globalMessageElement", globalMessageElement);
         globalMessageElement.parentNode.removeChild(globalMessageElement);
       }
     }

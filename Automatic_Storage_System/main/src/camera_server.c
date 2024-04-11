@@ -261,7 +261,8 @@ esp_err_t handle_ws_req(httpd_req_t *req)
 #endif
     //Receive "capture" message from web browser to send image
     if ( strcmp((char*)ws_pkt.payload,"capture") == 0 )
-    {   
+    {
+        downloaded_image = false;
         bool first_cap = true;
         while( (ret == ESP_OK) && (downloaded_image == false))
         {
