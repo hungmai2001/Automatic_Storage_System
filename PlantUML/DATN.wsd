@@ -1,0 +1,4 @@
+@startuml da
+ ESP32CAM --> ESP32CAM: Start
+
+@enduml
