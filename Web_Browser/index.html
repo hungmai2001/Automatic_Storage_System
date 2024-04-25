@@ -103,6 +103,9 @@
     var faceDetectedLastTime = false;
     var text_input = "capture";
     var count_print_message = 0;
+    var status_image = false;
+    var status_back = false;
+    var status_back_finger = false;
     var emptyCountElement = document.getElementById("empty-count");
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
@@ -189,6 +192,8 @@
           }
           document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
           document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
+          status_back_finger = true;
+          document.getElementById('back').style.display = 'inline'; // Hiển thị nút "Trở lại"
           displayMessage_global("Vui lòng nhập vân tay...", "#C8C905");
           publishToDifferentTopic(messageToSend + number, topicToSend);
         }
@@ -266,6 +271,8 @@
         else if (message.payloadString.includes("no_person_match")) {
           removeMessageElement();
           console.log("Chuỗi '" + "no_person_match" + "' được tìm thấy trong chuỗi '");
+          status_back_finger = true;
+          document.getElementById('back').style.display = 'inline'; // Hiển thị nút "Trở lại"
           displayMessage_global("Vui lòng nhập vân tay để xác minh...", "#C8C905");
           publishToDifferentTopic(comparefinger, topicToSend);
         }
@@ -321,12 +328,16 @@
 
     function on_store_item()
     {
+      status_back = false;
+      status_back_finger = false;
       store_item = true;
       web_socket.send(text_input);
     }
 
     function on_get_item()
     {
+      status_back = false;
+      status_back_finger = false;
       get_item = true;
       removeMessageElement();
       web_socket.send(text_input);
@@ -357,16 +368,37 @@
 
     function on_back()
     {
-      count_print_message = 0;
-      console.log("on_back");
-      document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
-      document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
-      removeMessageElement();
-      clearBoundingBoxes();
-      faceDetectionCount = 0;
-      document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
-      document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
-
+      if (status_back_finger == false)
+      {
+        status_back = true;
+        if (status_image == false)
+        {
+          console.log("status_image is true");
+          // Gửi thông tin đã lưu image đến esp32-cam
+          // var text_input_1 = "downloaded_image";
+          // web_socket.send(text_input_1);
+          publishToDifferentTopic(downloaded_image, topicToSend);
+        }
+        count_print_message = 0;
+        console.log("on_back");
+        document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+        document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
+        removeMessageElement();
+        clearBoundingBoxes();
+        faceDetectionCount = 0;
+        document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
+        document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+        status_image = false;
+      }
+      else 
+      {
+        removeMessageElement();
+        publishToDifferentTopic("back_finger", topicToSend);
+        document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+        document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
+        document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+        status_back_finger = false;
+      }
     }
 
     function on_error(recv_data)
@@ -395,8 +427,9 @@
       // console.log(recv_data.data);
       // console.log("on_message");
       //Get image with "Giữ Đồ" option, display it and save image if the face is detected
-      if ( (true == store_item) || (true == get_item))
+      if ( ((true == store_item) || (true == get_item)) && (status_back == false))
       {
+        document.getElementById('back').style.display = 'inline'; // Hiển thị nút "Trở lại"
         document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
         document.getElementById('get').style.display = 'none'; // Ẩn nút LẤY ĐỒ
         faceapi.tf.engine().startScope();
@@ -441,6 +474,7 @@
           if (faceDetectionCount >= count_image) {
             document.getElementById('back').style.display = 'inline'; // hiển thị nút "Trở lại"
             document.getElementById('download').style.display = 'inline'; // hiển thị nút "Tiếp tục"
+            status_image = true;
             count_print_message = count_print_message + 1;
             if (count_print_message == 1)
             {

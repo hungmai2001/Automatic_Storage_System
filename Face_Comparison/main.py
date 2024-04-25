@@ -123,6 +123,7 @@ if __name__ == "__main__":
                 # manager.remove_number(8)
                 publish.single(topic,f"save_image_{image_count}", hostname=broker_address)
                 start_finger = f2.loop_mqtt_to_waiting_events_start()
+                print("start_finger", start_finger)
                 if (start_finger == "store_fingerprint"):
                     new_file_move = f1.move_image(file_check, folder_to_check, folder_store, fs, image_count)
                     if new_file_move:
@@ -138,6 +139,8 @@ if __name__ == "__main__":
                         # Publish infor tới web browser là đã xử lý xong
                     else:
                         print("Error")
+                elif (start_finger == "fingerprint_end"):
+                    f1.remove_file_in_folder_f(folder_to_check)
             elif "image_get" in file_check:
                 number_img = f1.find_unknown_people(file_check, folder_store, folder_to_check, name_image, fs, number_image)
                 print(f"number_img: {number_img}")

@@ -83,20 +83,24 @@ def loop_mqtt_to_waiting_events():
 # Define callback function for when a message is received
 def on_message_start(client, userdata, message):
     global string_finger
+    global message_received_
+    message_received_ = False
     if "store_fingerprint" in message.payload.decode():
         string_finger = message.payload.decode()
         print("store_fingerprint được tìm thấy số trong chuỗi.")
         print(message.payload.decode())
+    elif "fingerprint_end" in message.payload.decode():
+        string_finger = message.payload.decode()
+        print("fingerprint_end được tìm thấy số trong chuỗi.")
+        print(message.payload.decode())
     else:
         string_finger = "None"
         print("None")
-    global message_received
-    message_received = True
+    message_received_ = True
 
 def loop_mqtt_to_waiting_events_start():
-    global message_received
-    global string_finger
-    message_received = False
+    global message_received_
+    message_received_ = False
     # Create MQTT client instance
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     # Set callback function
@@ -109,7 +113,7 @@ def loop_mqtt_to_waiting_events_start():
     client.subscribe(topic)
 
     # Loop until a message is received
-    while not message_received:
+    while not message_received_:
         client.loop()
 
     # Disconnect MQTT client
