@@ -46,11 +46,8 @@ esp_err_t image_process(httpd_req_t *req, httpd_ws_frame_t *pkt, bool * fir_cap)
 int get_sequence_number(const char *str, const char *pattern);
 bool downloaded_image = false;
 // Store wi-fi credentials
-char ssid[32] = "Trinh";
-char password[64] = "0333755401 ";
-// char ssid[32] = "Hungmai";
-// char password[64] = "hungmaixx";
-
+char ssid[32] = "Hungmai";
+char password[64] = "hungmaixx";
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -264,12 +261,14 @@ esp_err_t handle_ws_req(httpd_req_t *req)
     {
         downloaded_image = false;
         bool first_cap = true;
+        ESP_LOGI(TAG1, "Start capture");
         while( (ret == ESP_OK) && (downloaded_image == false))
         {
             ret = image_process(req, &ws_pkt, &first_cap);
             //Switch to other task
             vTaskDelay(pdMS_TO_TICKS(20));
         }
+        ESP_LOGI(TAG1, "End capture");
         downloaded_image = false;
     }
     // Receive name of picture detected from python scripts

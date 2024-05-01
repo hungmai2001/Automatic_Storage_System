@@ -99,6 +99,7 @@ def on_message_start(client, userdata, message):
     message_received_ = True
 
 def loop_mqtt_to_waiting_events_start():
+    print("loop_mqtt_to_waiting_events_start")
     global message_received_
     message_received_ = False
     # Create MQTT client instance

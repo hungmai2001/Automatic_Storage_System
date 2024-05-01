@@ -106,6 +106,7 @@
     var status_image = false;
     var status_back = false;
     var status_back_finger = false;
+    var end_image = false;
     var emptyCountElement = document.getElementById("empty-count");
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
@@ -345,6 +346,7 @@
 
     function on_download_image()
     {
+      end_image = false;
       count_print_message = 0;
       console.log("on_download_image");
       document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
@@ -368,6 +370,7 @@
 
     function on_back()
     {
+      end_image = false;
       if (status_back_finger == false)
       {
         status_back = true;
@@ -427,7 +430,7 @@
       // console.log(recv_data.data);
       // console.log("on_message");
       //Get image with "Giữ Đồ" option, display it and save image if the face is detected
-      if ( ((true == store_item) || (true == get_item)) && (status_back == false))
+      if ( ((true == store_item) || (true == get_item)) && (status_back == false) && (end_image == false))
       {
         document.getElementById('back').style.display = 'inline'; // Hiển thị nút "Trở lại"
         document.getElementById('store').style.display = 'none'; // Ẩn nút LẤY ĐỒ
@@ -482,9 +485,8 @@
             }
             console.log("Downloaded image!!!");
             // Gửi thông tin đã lưu image đến esp32-cam
-            var text_input_1 = "downloaded_image";
-            web_socket.send(text_input_1);
             publishToDifferentTopic(downloaded_image, topicToSend);
+            end_image = true;
           }
         }
         // Dispose WebGLTexture
