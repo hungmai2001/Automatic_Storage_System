@@ -1,129 +1,51 @@
 @startuml
 participant ESP32CAM
-participant Backend
-participant MQTTServer
-participant FrontEnd
-
-== Quá trình nhận diện và xử lý hình ảnh ==
-
-ESP32CAM -> ESP32CAM: Nhận hình ảnh từ camera
-activate ESP32CAM
-
-ESP32CAM --> MQTTServer: Gửi hình ảnh qua MQTT
-deactivate ESP32CAM
-activate MQTTServer
-
-MQTTServer -> Backend: Gửi hình ảnh nhận được
-activate Backend
-
-Backend -> Backend: Xử lý hình ảnh để detect khuôn mặt
-alt Khuôn mặt được detect
-    Backend -> Backend: Tăng biến đếm số lượng khuôn mặt liên tiếp
-    Backend --> FrontEnd: Hiển thị thông báo "Khuôn mặt đã được detect"
-    activate FrontEnd
-    FrontEnd -> FrontEnd: Hiển thị lựa chọn: Tiếp tục, Trở lại
-    FrontEnd --> FrontEnd: Người dùng chọn lựa chọn
-    deactivate FrontEnd
-    Backend -> Backend: Xử lý lựa chọn của người dùng
-else Khuôn mặt không được detect
-    Backend -> Backend: Reset biến đếm số lượng khuôn mặt liên tiếp
-end
-alt Người dùng chọn option "Trở lại"
-	Backend --> FrontEnd: Quay trở lại màn hình chính
-end
-
-Backend --> MQTTServer: Gửi kết quả xử lý
-deactivate Backend
-deactivate MQTTServer
-
-@enduml
-
-
-@startuml
-participant ESP32CAM
-participant Backend
-participant FrontEnd
-
-ESP32CAM -> Backend: Gửi hình ảnh
-Backend -> Backend: Nhận và xử lý hình ảnh\n(Nhận diện khuôn mặt)
-activate Backend
-loop until 7 khuôn mặt liên tiếp được detect
-    FrontEnd -> FrontEnd: Hiển thị giao diện\n(Option: Trở lại)
-    FrontEnd --> FrontEnd: Người dùng nhấn nút "Trở lại"
-    FrontEnd -> ESP32CAM: Thông báo không gửi hình ảnh
-    deactivate Backend
-    FrontEnd --> FrontEnd: Hiển thị thông báo\n(Quá trình đã dừng)
-end
-@enduml
-
-
-@startuml
-participant ESP32CAM
-participant Backend
-participant FrontEnd
-
-ESP32CAM -> Backend: Gửi hình ảnh
-Backend -> Backend: Nhận và xử lý hình ảnh\n(Nhận diện khuôn mặt)
-activate Backend
-loop until 7 khuôn mặt liên tiếp được detect
-    alt Khuôn mặt được detect
-    Backend -> Backend: Tăng biến đếm số lượng khuôn mặt liên tiếp
-    Backend --> FrontEnd: Hiển thị thông báo "Khuôn mặt đã được detect"
-    activate FrontEnd
-    FrontEnd -> FrontEnd: Hiển thị lựa chọn: Tiếp tục, Trở lại
-    FrontEnd --> FrontEnd: Người dùng chọn lựa chọn
-    deactivate FrontEnd
-    Backend -> Backend: Xử lý lựa chọn của người dùng
-else Khuôn mặt không được detect
-    Backend -> Backend: Reset biến đếm số lượng khuôn mặt liên tiếp
-end
-alt Người dùng chọn option "Trở lại"
-	Backend --> FrontEnd: Quay trở lại màn hình chính
-end
-end
-@enduml
-
-
-@startuml
-participant ESP32CAM
 box #LightBlue
 participant BackEnd 
 participant FrontEnd
 end box
 participant PythonScripts 
 participant ESP32
+activate FrontEnd
+activate ESP32
+activate ESP32CAM
+activate PythonScripts
+activate BackEnd
 
-activate FrontEnd #005500
 FrontEnd --> FrontEnd : **<color red>Nhấn nút GỬI ĐỒ</color>**
-deactivate FrontEnd
-== **<color green>Nhận diện khuôn mặt</color>** ==
+activate FrontEnd #005500
+deactivate FrontEnd 
+== **<color green>Thu thập khuôn mặt</color>** ==
 activate BackEnd #005500
-BackEnd --> ESP32CAM : [websocket] capture
-loop until face detected
+BackEnd --> ESP32CAM : [websocket] Capture
+loop until face detected 10 times continuously
    activate ESP32CAM #20a4d8
-   ESP32CAM --> BackEnd : [websocket] send image
-   BackEnd --> FrontEnd : stream image
+   ESP32CAM --> BackEnd : [websocket] Gửi hình ảnh
+   BackEnd --> BackEnd : Nhận diện khuôn mặt
+   BackEnd -> FrontEnd: 
    activate FrontEnd #005500
    FrontEnd --> FrontEnd : Hiển thị hình ảnh
 end
 deactivate FrontEnd
-BackEnd --> ESP32CAM : [MQTT] dừng capture
+BackEnd --> ESP32CAM : [MQTT] Dừng capture
+deactivate ESP32CAM 
 BackEnd --> BackEnd : Tải xuống hình ảnh
-deactivate ESP32CAM
-deactivate BackEnd 
+deactivate BackEnd
+PythonScripts --> PythonScripts : Phát hiện hình ảnh trong thư mục
 activate PythonScripts #ef2731 
-== **<color green>Nhận diện vân tay</color>** ==
+== **<color green>Thu thập vân tay</color>** ==
 PythonScripts --> ESP32: [MQTT] Lấy mẫu vân tay
 activate ESP32 #efde27
 ESP32 --> ESP32 : Lấy mẫu vân tay
+ESP32 --> ESP32 : Cập nhật led tủ
 ESP32 --> PythonScripts : [MQTT] Thông báo lưu vân tay
 deactivate ESP32
 PythonScripts --> PythonScripts : Lưu hình ảnh vào database [id]
 PythonScripts --> BackEnd : [MQTT] Đã lưu hình ảnh và vân tay
 deactivate PythonScripts 
 activate BackEnd #005500
-BackEnd --> FrontEnd: Cập nhật lại giao diện
+BackEnd -> FrontEnd: Cập nhật lại giao diện
 deactivate BackEnd
 activate FrontEnd #005500
-FrontEnd --> FrontEnd : **<color red>Hiển thị nút nhấn: LẤY ĐỒ</color>**\n**<color red>và/hoặc GỬI ĐỒ</color>**
+FrontEnd --> FrontEnd : Hiển thị thông báo/nút nhấn
 @enduml

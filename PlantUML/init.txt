@@ -7,24 +7,33 @@ end box
 participant PythonScripts 
 participant ESP32
 !pragma teoz true
-ESP32CAM --> ESP32CAM: Khởi tạo camera và pin,\nkết nối wi-fi, khởi tạo\nwebsocket server, kết nối MQTT
-activate ESP32CAM 
-& ESP32 --> ESP32: Khởi tạo UART và pin,\nkết nối wi-fi, xác minh mật\nkhẩu (fingerprint module)
-activate ESP32
+ESP32CAM --> ESP32CAM: Tạo websocket server
+activate ESP32CAM #20a4d8
+& ESP32 --> ESP32: Kết nối MQTT
+activate ESP32 #efde27
+& BackEnd --> BackEnd : Start
+activate BackEnd #005500 
+
+
 FrontEnd --> FrontEnd : Nhập IP của ESP32-CAM
-activate BackEnd 
- 
-BackEnd --> BackEnd : Subscribe đến topic của MQTT
- PythonScripts --> PythonScripts : Start
-PythonScripts --> PythonScripts : Xóa các file trong các folder,\ntải hình ảnh từ database
-activate PythonScripts #005500
+FrontEnd -> BackEnd : Kết nối
+activate BackEnd #DarkSalmon
+BackEnd --> BackEnd: Kết nối đến\nwebsocket server
+deactivate BackEnd
+
+PythonScripts --> PythonScripts : Tải hình ảnh từ database
+activate PythonScripts #ef2731 
+
 !pragma teoz true
-PythonScripts --> BackEnd : [MQTT]Gửi số lượng tủ đã dùng
-& PythonScripts --> ESP32: [MQTT]Gửi id các tủ đã dùng
-activate FrontEnd
+PythonScripts --> BackEnd : [MQTT] Gửi số lượng tủ còn trống
+activate BackEnd #DarkSalmon
+& PythonScripts --> ESP32: [MQTT] Gửi id các tủ đã dùng
+BackEnd -> FrontEnd : Hiển thị
+deactivate BackEnd
+activate FrontEnd #005500 
 !pragma teoz true
-FrontEnd --> FrontEnd : **<color red>Hiển thị nút nhấn: LẤY ĐỒ</color>**\n**<color red>và/hoặc GỬI ĐỒ</color>**
-& ESP32 --> ESP32: Xóa vân tay của các id\nchưa xài,cập nhật trạng\nthái của tủ
+FrontEnd --> FrontEnd : **<color red>Hiển thị nút: LẤY ĐỒ</color>**\n**<color red>và/hoặc GỬI ĐỒ</color>**
+& ESP32 --> ESP32: Cập nhật led tủ
 == **<color green>Bắt đầu ứng dụng</color>** == 
 
 @enduml
