@@ -100,10 +100,6 @@ if __name__ == "__main__":
     f1.remove_file_in_folder_f(folder_to_check)
     # Clone image từ database
     f2.get_image_from_database(fs, db, folder_store)
-    # # Đếm số lượng hình ảnh trong store folder
-    # count = f1.count_images_in_folder(folder_store)
-    # Publish đến MQTT
-    # publish.single(topic, f"start_count_{count}", hostname=broker_address)
     path_send = images_in_folder(folder_store, name_image)
     publish.single(topic, path_send, hostname=broker_address)
     # Vòng lặp vô hạn
@@ -111,13 +107,6 @@ if __name__ == "__main__":
         file_check = f1.check_file_in_folder(folder_to_check, name_to_check)
         if file_check:
             if "image_store" in file_check:
-                # Sử dụng regular expression để tìm số tự nhiên trong chuỗi
-                # match = re.search(r'\d+', file_check)
-                # if match:
-                #     # Nếu tìm thấy số tự nhiên, lấy giá trị và chuyển đổi thành số nguyên
-                #     x = int(match.group())
-
-                # filepath = os.path.join(folder_to_check, file_check)
                 manager.display_sequence()
                 image_count = manager.choose_number()
                 # manager.remove_number(8)
@@ -130,13 +119,6 @@ if __name__ == "__main__":
                         count = f1.count_images_in_folder(folder_store)
                         manager.add_number(image_count)
                         publish.single(topic,f"save_finger_ok_{image_count}", hostname=broker_address)
-                        # publish.single(topic,f"save_image_{count}", hostname=broker_address)
-
-                        #Loop để chờ data finger từ esp32-cam
-                        #####
-                        # Lưu finger ứng với hình ảnh new_file_move này (có stt trong này)
-
-                        # Publish infor tới web browser là đã xử lý xong
                     else:
                         print("Error")
                 elif (start_finger == "fingerprint_end"):
@@ -156,11 +138,3 @@ if __name__ == "__main__":
         # Chờ 2 giây trước khi kiểm tra lại
         else:
             time.sleep(2)
-    # file_path = "D:/DATN/esp32_cam_image/img_get/image_store_2.jpg"
-    # file_path1 = "D:/DATN/esp32_cam_image/img_get/image_store_4.jpg"
-    # file_path2 = "D:/DATN/esp32_cam_image/img_get/image_store_6.jpg"
-    # file_path3 = "D:/DATN/esp32_cam_image/img_get/image_store_7.jpg"
-    # # f2.push_image(file_path, fs, "image_store_2.jpg")
-    # # f2.push_image(file_path1, fs, "image_store_4.jpg")
-    # f2.push_image(file_path2, fs, "image_store_6.jpg")
-    # f2.push_image(file_path3, fs, "image_store_7.jpg")

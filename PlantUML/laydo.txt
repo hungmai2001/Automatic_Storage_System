@@ -1,67 +1,55 @@
 @startuml
 participant ESP32CAM
 box #LightBlue
-participant BackEnd 
 participant FrontEnd
+participant BackEnd
 end box
-participant ScriptPython 
 participant ESP32
 activate FrontEnd
 activate ESP32
 activate ESP32CAM
-activate ScriptPython
 activate BackEnd
 
 FrontEnd --> FrontEnd : **<color red>Nhấn nút LẤY ĐỒ</color>**
 activate FrontEnd #005500
-deactivate FrontEnd 
+ 
 == **<color green>So sánh khuôn mặt</color>** ==
-activate BackEnd #005500
-BackEnd --> ESP32CAM : [websocket] Capture
+FrontEnd --> ESP32CAM : [websocket] Capture
 loop until face detected 10 times continuously
    activate ESP32CAM #20a4d8
-   ESP32CAM --> BackEnd : [websocket] Gửi hình ảnh
-   BackEnd --> BackEnd : Nhận diện khuôn mặt
-   BackEnd -> FrontEnd: 
-   activate FrontEnd #005500
-   FrontEnd --> FrontEnd : Hiển thị hình ảnh
+   ESP32CAM --> FrontEnd : [websocket] Gửi hình ảnh
+   FrontEnd --> FrontEnd : Nhận diện khuôn mặt, hiển thị hình ảnh
 end
-deactivate FrontEnd
-BackEnd --> ESP32CAM : [MQTT] Dừng capture
+FrontEnd --> ESP32CAM : [MQTT] Dừng capture
 deactivate ESP32CAM 
-BackEnd --> BackEnd : Tải xuống hình ảnh
-deactivate BackEnd
-ScriptPython --> ScriptPython : Phát hiện hình ảnh trong folder\ndownload. So sánh với hình ảnh\ntrong thư mục lưu trữ
-activate ScriptPython #ef2731 
+FrontEnd --> FrontEnd : Tải xuống hình ảnh
+deactivate FrontEnd
+BackEnd --> BackEnd : Phát hiện hình ảnh trong folder\ndownload. So sánh với hình ảnh\ntrong thư mục lưu trữ
+activate BackEnd #ef2731 
 alt#Gold #EEEBDC Có khuôn mặt trùng khớp
-    ScriptPython --> ESP32: [MQTT] Xóa vân tay [id]
-    deactivate ScriptPython 
+    BackEnd --> ESP32: [MQTT] Xóa vân tay [id]
+    deactivate BackEnd 
     activate ESP32 #efde27
     ESP32 --> ESP32: Xóa vân tay [id]
-    ESP32 --> BackEnd: [MQTT] Mở tủ [id]
+    ESP32 --> ESP32: Cập nhật led tủ
+    ESP32 --> FrontEnd: [MQTT] Mở tủ [id]
     deactivate ESP32 
-    activate BackEnd #005500
-    BackEnd -> FrontEnd: Cập nhật lại giao diện
-    deactivate BackEnd
     activate FrontEnd #005500
     FrontEnd --> FrontEnd : Hiển thị thông báo/nút nhấn
     deactivate FrontEnd
 else #d49b89 Không có khuôn mặt trùng khớp
 == **<color green>So sánh vân tay</color>** ==
-    activate ScriptPython #ef2731
-ScriptPython --> BackEnd: [MQTT] Không tìm thấy khuôn mặt
-deactivate ScriptPython
-activate BackEnd #005500
-BackEnd --> ESP32: [MQTT] So sánh vân tay
-deactivate BackEnd 
+    activate BackEnd #ef2731
+BackEnd --> FrontEnd: [MQTT] Không tìm thấy khuôn mặt
+deactivate BackEnd
+activate FrontEnd #005500
+FrontEnd --> ESP32: [MQTT] So sánh vân tay
+deactivate FrontEnd 
 activate ESP32 #efde27
 ESP32 --> ESP32 : Lấy mẫu vân tay và so sánh
 ESP32 --> ESP32 : Cập nhật led tủ
-ESP32 --> BackEnd: [MQTT] Gửi kết quả so sánh
+ESP32 --> FrontEnd: [MQTT] Gửi kết quả so sánh
 deactivate ESP32
-activate BackEnd #005500
-BackEnd -> FrontEnd: Cập nhật lại giao diện
-deactivate BackEnd 
 activate FrontEnd #005500
 FrontEnd --> FrontEnd : Hiển thị thông báo/nút nhấn
 

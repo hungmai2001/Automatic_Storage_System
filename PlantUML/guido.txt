@@ -1,51 +1,40 @@
 @startuml
 participant ESP32CAM
 box #LightBlue
-participant BackEnd 
 participant FrontEnd
-end box
-participant PythonScripts 
+participant BackEnd 
+end box 
 participant ESP32
 activate FrontEnd
 activate ESP32
 activate ESP32CAM
-activate PythonScripts
 activate BackEnd
 
 FrontEnd --> FrontEnd : **<color red>Nhấn nút GỬI ĐỒ</color>**
 activate FrontEnd #005500
-deactivate FrontEnd 
 == **<color green>Thu thập khuôn mặt</color>** ==
-activate BackEnd #005500
-BackEnd --> ESP32CAM : [websocket] Capture
+FrontEnd --> ESP32CAM : [websocket] Capture
 loop until face detected 10 times continuously
    activate ESP32CAM #20a4d8
-   ESP32CAM --> BackEnd : [websocket] Gửi hình ảnh
-   BackEnd --> BackEnd : Nhận diện khuôn mặt
-   BackEnd -> FrontEnd: 
-   activate FrontEnd #005500
-   FrontEnd --> FrontEnd : Hiển thị hình ảnh
+   ESP32CAM --> FrontEnd : [websocket] Gửi hình ảnh
+   FrontEnd --> FrontEnd : Nhận diện khuôn mặt, hiển thị hình ảnh
 end
-deactivate FrontEnd
-BackEnd --> ESP32CAM : [MQTT] Dừng capture
+FrontEnd --> ESP32CAM : [MQTT] Dừng capture
 deactivate ESP32CAM 
-BackEnd --> BackEnd : Tải xuống hình ảnh
-deactivate BackEnd
-PythonScripts --> PythonScripts : Phát hiện hình ảnh trong thư mục
-activate PythonScripts #ef2731 
+FrontEnd --> FrontEnd : Tải xuống hình ảnh
+deactivate FrontEnd
+BackEnd --> BackEnd : Phát hiện hình ảnh trong folder download
+activate BackEnd #ef2731 
 == **<color green>Thu thập vân tay</color>** ==
-PythonScripts --> ESP32: [MQTT] Lấy mẫu vân tay
+BackEnd --> ESP32: [MQTT] Lấy mẫu vân tay
 activate ESP32 #efde27
 ESP32 --> ESP32 : Lấy mẫu vân tay
 ESP32 --> ESP32 : Cập nhật led tủ
-ESP32 --> PythonScripts : [MQTT] Thông báo lưu vân tay
+ESP32 --> BackEnd : [MQTT] Thông báo đã lưu vân tay
 deactivate ESP32
-PythonScripts --> PythonScripts : Lưu hình ảnh vào database [id]
-PythonScripts --> BackEnd : [MQTT] Đã lưu hình ảnh và vân tay
-deactivate PythonScripts 
-activate BackEnd #005500
-BackEnd -> FrontEnd: Cập nhật lại giao diện
-deactivate BackEnd
+BackEnd --> BackEnd : Lưu hình ảnh vào database [id]
+BackEnd --> FrontEnd : [MQTT] Đã lưu hình ảnh và vân tay
+deactivate BackEnd 
 activate FrontEnd #005500
-FrontEnd --> FrontEnd : Hiển thị thông báo/nút nhấn
+FrontEnd -> FrontEnd: Hiển thị thông báo/nút nhấn
 @enduml

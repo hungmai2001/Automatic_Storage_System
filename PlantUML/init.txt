@@ -1,38 +1,30 @@
 @startuml
 participant ESP32CAM
-box #LightBlue
-participant BackEnd 
+box #LightBlue 
 participant FrontEnd
-end box
-participant PythonScripts 
+participant BackEnd
+end box 
 participant ESP32
 !pragma teoz true
 ESP32CAM --> ESP32CAM: Tạo websocket server
 activate ESP32CAM #20a4d8
 & ESP32 --> ESP32: Kết nối MQTT
 activate ESP32 #efde27
-& BackEnd --> BackEnd : Start
-activate BackEnd #005500 
 
 
-FrontEnd --> FrontEnd : Nhập IP của ESP32-CAM
-FrontEnd -> BackEnd : Kết nối
-activate BackEnd #DarkSalmon
-BackEnd --> BackEnd: Kết nối đến\nwebsocket server
-deactivate BackEnd
-
-PythonScripts --> PythonScripts : Tải hình ảnh từ database
-activate PythonScripts #ef2731 
+FrontEnd --> FrontEnd : Nhập IP của ESP32CAM để\nkết nối đến websocket server
+activate FrontEnd #DarkSalmon
+BackEnd --> BackEnd : Tải hình ảnh từ database
+activate BackEnd #ef2731 
 
 !pragma teoz true
-PythonScripts --> BackEnd : [MQTT] Gửi số lượng tủ còn trống
-activate BackEnd #DarkSalmon
-& PythonScripts --> ESP32: [MQTT] Gửi id các tủ đã dùng
-BackEnd -> FrontEnd : Hiển thị
-deactivate BackEnd
-activate FrontEnd #005500 
+BackEnd --> FrontEnd : [MQTT] Gửi số lượng tủ còn trống
+
+& BackEnd --> ESP32: [MQTT] Gửi id các tủ đã dùng
+
 !pragma teoz true
 FrontEnd --> FrontEnd : **<color red>Hiển thị nút: LẤY ĐỒ</color>**\n**<color red>và/hoặc GỬI ĐỒ</color>**
+activate FrontEnd #005500 
 & ESP32 --> ESP32: Cập nhật led tủ
 == **<color green>Bắt đầu ứng dụng</color>** == 
 

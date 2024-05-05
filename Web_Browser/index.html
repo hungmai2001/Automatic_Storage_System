@@ -205,6 +205,7 @@
           if (matches) {
             number = parseInt(matches[0]); 
           }
+          document.getElementById('back').style.display = 'none'; // Hiển thị nút "Trở lại"
           removeMessageElement();
           console.log("Chuỗi '" + "save_finger_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
           displayMessage("Tủ số " + number + " đã mở!", 0, displayMessageTimeout, "white");
