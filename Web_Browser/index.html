@@ -140,7 +140,7 @@
                       console.log("Reconnection failed: " + message.errorMessage);
                   }
               });
-          }, 20); // Thử kết nối lại sau 2 giây
+          }, 2); // Thử kết nối lại sau 2 mgiây
         }
     }
 
@@ -177,13 +177,13 @@
           console.log("Chuỗi '" + "max_image" + "' được tìm thấy trong chuỗi");
           // Sử dụng regular expression để tìm số tự nhiên trong chuỗi
           document.getElementById('store').style.display = 'none'; // Ẩn nút GIỮ ĐỒ
-          document.getElementById('get').style.display = 'inline'; // Ẩn nút LẤY ĐỒ
+          document.getElementById('get').style.display = 'inline'; // Hiển thị nút LẤY ĐỒ
           removeMessageElement();
           displayMessage_global("Đã hết tủ trống!", "white");
         }
         // Nhận message đã lưu image thành công, lấy id trong message và gửi đến esp32-cam
         else if (message.payloadString.includes("save_image_")) {
-
+          
           removeMessageElement();
           console.log("Chuỗi '" + "save_image_" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
           // Sử dụng regular expression để tìm số tự nhiên trong chuỗi
@@ -205,7 +205,7 @@
           if (matches) {
             number = parseInt(matches[0]); 
           }
-          document.getElementById('back').style.display = 'none'; // Hiển thị nút "Trở lại"
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
           removeMessageElement();
           console.log("Chuỗi '" + "save_finger_ok" + "' được tìm thấy trong chuỗi '" + message.payloadString + "'");
           displayMessage("Tủ số " + number + " đã mở!", 0, displayMessageTimeout, "white");
@@ -224,6 +224,7 @@
           if (matches) {
             number = parseInt(matches[0]); 
           }
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
           removeMessageElement();
           console.log("Chuỗi '" + "image_detect_" + "' được tìm thấy trong chuỗi '");
           displayMessage("Cửa số " + number + " đã mở!", 0, displayMessageTimeout, "white");
@@ -241,7 +242,7 @@
         else if (message.payloadString.includes("detect_")) {
           // Tìm tất cả các số trong chuỗi sử dụng regex
           var numbers = message.payloadString.match(/\d+/g);
-
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
           // Gán các số vào một chuỗi mới
           var resultString = numbers.join(', ');
           removeMessageElement();
@@ -260,6 +261,7 @@
         // Nhận message không tìm thấy khuôn mặt và gửi message đến esp32-cam để start compare fingerprint
         else if (message.payloadString.includes("no_person_fingerprint")) {
           removeMessageElement();
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
           console.log("Chuỗi '" + "no_person_fingerprint" + "' được tìm thấy trong chuỗi '");
           displayMessage("Không có thông tin. Vui lòng thử lại.", 0, displayMessageTimeout, "white");
           setTimeout(() => {
@@ -347,7 +349,6 @@
 
     function on_download_image()
     {
-      end_image = false;
       count_print_message = 0;
       console.log("on_download_image");
       document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
@@ -367,11 +368,11 @@
       }
       clearBoundingBoxes();
       faceDetectionCount = 0;
+      end_image = false;
     }
 
     function on_back()
-    {
-      end_image = false;
+    {    
       if (status_back_finger == false)
       {
         status_back = true;
@@ -390,8 +391,10 @@
         removeMessageElement();
         clearBoundingBoxes();
         faceDetectionCount = 0;
+        if (number_empty > 0) {
+          document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+        }
         document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
-        document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
         status_image = false;
       }
       else 
@@ -399,10 +402,13 @@
         removeMessageElement();
         publishToDifferentTopic("back_finger", topicToSend);
         document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
-        document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
+        if (number_empty > 0) {
+          document.getElementById('get').style.display = 'inline'; // Hiển thị nút "lấy đồ"
+        }
         document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
         status_back_finger = false;
       }
+      end_image = false;
     }
 
     function on_error(recv_data)
