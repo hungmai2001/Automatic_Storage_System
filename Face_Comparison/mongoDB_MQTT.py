@@ -120,3 +120,42 @@ def loop_mqtt_to_waiting_events_start():
     # Disconnect MQTT client
     client.disconnect()
     return string_finger
+
+
+# Define callback function for when a message is received
+def on_message_old_image(client, userdata, message):
+    print("Received message:", message.payload.decode())
+    global status_continue
+    status_continue = False
+    global message_received_x
+    message_received_x = False
+    if "continue" in message.payload.decode():
+        print("Continue")
+        print(message.payload.decode())
+        status_continue = True
+    else:
+        print("None")
+    message_received_x = True
+
+def loop_mqtt_to_waiting_events_old_image():
+    global message_received_x
+    global status_continue
+    message_received_x = False
+    # Create MQTT client instance
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    # Set callback function
+    client.on_message = on_message_old_image
+    # Connect to MQTT broker
+    broker_address = "mqtt.eclipseprojects.io"  # Thay bằng địa chỉ broker MQTT của bạn
+    client.connect(broker_address)
+    # Subscribe to topic
+    topic = "/topic/hungmai_py_publish"  # Thay bằng tên chủ đề MQTT bạn muốn subscribe
+    client.subscribe(topic)
+
+    # Loop until a message is received
+    while not message_received_x:
+        client.loop()
+
+    # Disconnect MQTT client
+    client.disconnect()
+    return status_continue

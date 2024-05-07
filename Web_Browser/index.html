@@ -94,10 +94,14 @@
     const receiveMessageTimeout = 10000;
     var globalMessageElement;
     var messageToSend = "start_finger_";
+    var message_old_image = "blink_led_";
+    var message_continue_backend = "continue";
     var downloaded_image = "downloaded_image";
     var comparefinger = "compare_finger";
     var topicToSend = "/topic/hungmai_wb_publish";
+    var topicToSend_py = "/topic/hungmai_py_publish";
     var number = 0;
+    var number_old_image = 0;
     var number_empty = 0;
     var faceDetectionCount = 0;
     var faceDetectedLastTime = false;
@@ -107,6 +111,7 @@
     var status_back = false;
     var status_back_finger = false;
     var end_image = false;
+    var old_image = false;
     var emptyCountElement = document.getElementById("empty-count");
     // Tạo một MQTT client instance
     var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
@@ -280,6 +285,31 @@
           displayMessage_global("Vui lòng nhập vân tay để xác minh...", "#C8C905");
           publishToDifferentTopic(comparefinger, topicToSend);
         }
+        // Nhận message đã detect được khuôn mặt người và hiện lại các option
+        else if (message.payloadString.includes("old_image_")) {
+          var matches = message.payloadString.match(/\d+/);
+          console.log("matches_" + matches);
+          if (matches) {
+            number_old_image = parseInt(matches[0]); 
+          }
+          old_image = true;
+          removeMessageElement();
+          displayMessage_global("Bạn đã gửi đồ ở ô số " + number_old_image + ". Bạn có muốn gửi thêm ?", "#C8C905");
+          document.getElementById('back').style.display = 'inline'; // Hiển thị nút "Trở lại"
+          document.getElementById('download').style.display = 'inline'; // Hiển thị nút "Tiếp tục"
+          console.log("Chuỗi '" + "old_image_" + "' được tìm thấy trong chuỗi '");
+        }
+        else if (message.payloadString.includes("continue")) {
+          console.log("Chuỗi '" + "continue" + "' được tìm thấy trong chuỗi '");
+          removeMessageElement();
+          displayMessage("Đóng tủ số " + number_old_image + ".", 0, displayMessageTimeout, "white");
+          setTimeout(() => {
+            if (number_empty > 0) {
+              document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+            }
+            document.getElementById('get').style.display = 'inline'; // Hiển thị lại nút "LẤY ĐỒ"
+          }, displayMessageTimeout);
+        }
         else {
           console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '");
         }
@@ -349,66 +379,90 @@
 
     function on_download_image()
     {
-      count_print_message = 0;
-      console.log("on_download_image");
-      document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
-      document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
-      removeMessageElement();
-      if (true == store_item) {
-        // Gọi hàm để thực hiện tải xuống hình ảnh
-        downloadImage(canvas_image.toDataURL('image/jpeg'), "image_store.jpg");
-        displayMessage_global("Hình ảnh của bạn đang được lưu trữ.", "white");
-        store_item = false;
-      }
-      else if (true == get_item) {
-        // Gọi hàm để thực hiện tải xuống hình ảnh
-        downloadImage(canvas_image.toDataURL('image/jpeg'), "image_get.jpg");
-        displayMessage_global("Thông tin của bạn đang được xử lý.", "white");
-        get_item = false;
-      }
-      clearBoundingBoxes();
-      faceDetectionCount = 0;
-      end_image = false;
-    }
-
-    function on_back()
-    {    
-      if (status_back_finger == false)
-      {
-        status_back = true;
-        if (status_image == false)
-        {
-          console.log("status_image is true");
-          // Gửi thông tin đã lưu image đến esp32-cam
-          // var text_input_1 = "downloaded_image";
-          // web_socket.send(text_input_1);
-          publishToDifferentTopic(downloaded_image, topicToSend);
-        }
+      if (old_image == false) {
         count_print_message = 0;
-        console.log("on_back");
+        console.log("on_download_image");
         document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
         document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
         removeMessageElement();
+        if (true == store_item) {
+          // Gọi hàm để thực hiện tải xuống hình ảnh
+          downloadImage(canvas_image.toDataURL('image/jpeg'), "image_store.jpg");
+          displayMessage_global("Hình ảnh của bạn đang được lưu trữ.", "white");
+          store_item = false;
+        }
+        else if (true == get_item) {
+          // Gọi hàm để thực hiện tải xuống hình ảnh
+          downloadImage(canvas_image.toDataURL('image/jpeg'), "image_get.jpg");
+          displayMessage_global("Thông tin của bạn đang được xử lý.", "white");
+          get_item = false;
+        }
         clearBoundingBoxes();
         faceDetectionCount = 0;
-        if (number_empty > 0) {
-          document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
-        }
-        document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
-        status_image = false;
+        end_image = false;
       }
-      else 
-      {
+      else {
+        old_image = false;
         removeMessageElement();
-        publishToDifferentTopic("back_finger", topicToSend);
         document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+        document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
+        publishToDifferentTopic(message_old_image + number_old_image, topicToSend);
+        displayMessage_global("Tủ số " + number_old_image + " mở trong 11s để bạn gửi thêm đồ!", "white");
+
+      }
+    }
+
+    function on_back()
+    {
+      if (old_image == false) {
+        if (status_back_finger == false)
+        {
+          status_back = true;
+          if (status_image == false)
+          {
+            console.log("status_image is true");
+            // Gửi thông tin đã lưu image đến esp32-cam
+            // var text_input_1 = "downloaded_image";
+            // web_socket.send(text_input_1);
+            publishToDifferentTopic(downloaded_image, topicToSend);
+          }
+          count_print_message = 0;
+          console.log("on_back");
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+          document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
+          removeMessageElement();
+          clearBoundingBoxes();
+          faceDetectionCount = 0;
+          if (number_empty > 0) {
+            document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+          }
+          document.getElementById('get').style.display = 'inline'; // Hiển thị nút "Lấy đồ"
+          status_image = false;
+        }
+        else 
+        {
+          removeMessageElement();
+          publishToDifferentTopic("back_finger", topicToSend);
+          document.getElementById('back').style.display = 'none'; // Ẩn nút "Trở lại"
+          if (number_empty > 0) {
+            document.getElementById('get').style.display = 'inline'; // Hiển thị nút "lấy đồ"
+          }
+          document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
+          status_back_finger = false;
+        }
+        end_image = false;
+      }
+      else {
+        old_image = false;
+        removeMessageElement();
+        publishToDifferentTopic(message_continue_backend, topicToSend_py);
+        document.getElementById('back').style.display = 'none'; // ẩn nút "Trở lại"
+        document.getElementById('download').style.display = 'none'; // Ẩn nút "Tiếp tục"
         if (number_empty > 0) {
-          document.getElementById('get').style.display = 'inline'; // Hiển thị nút "lấy đồ"
+            document.getElementById('get').style.display = 'inline'; // Hiển thị nút "lấy đồ"
         }
         document.getElementById('store').style.display = 'inline'; // Hiển thị nút "gửi đồ"
-        status_back_finger = false;
       }
-      end_image = false;
     }
 
     function on_error(recv_data)
@@ -606,7 +660,7 @@
     function removeMessageElement()
     {
       if (globalMessageElement && globalMessageElement.parentNode) {
-        console.log("globalMessageElement", globalMessageElement);
+        // console.log("globalMessageElement", globalMessageElement);
         globalMessageElement.parentNode.removeChild(globalMessageElement);
       }
     }

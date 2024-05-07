@@ -168,3 +168,44 @@ def move_image(file_store, folder_to_check, folder_store, fs, image_count):
     else:
         print(f"No image in {folder_to_check}.")
         return None
+    
+# Tìm khuôn mặt người trong folder và gửi kết quả đến ESP32-CAM (GỬI ĐỒ)
+def find_unknown_people_xx(filename, folder_store, folder_to_check, name_image):
+    filepath = os.path.join(folder_to_check, filename)
+    # Kiểm tra xem tệp có phải là ảnh không
+    if os.path.isfile(filepath) and filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+        # Chạy lệnh face_recognition
+        print(f"folder_store: {folder_store}")
+        print(f"filepath: {filepath}")
+        command = f"face_recognition --tolerance 0.45 {folder_store} {filepath}"
+
+        # Sử dụng subprocess để chạy lệnh và gửi kết quả đến ESP32-CAM
+        try:
+            result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+            print(f"result.stdout: {result.stdout}")
+            count_occurrences = result.stdout.count(name_image)
+            print(f"count_occurrences: {count_occurrences}")
+
+            # Kiểm tra nếu có kết quả khớp trong đầu ra
+            if count_occurrences == 1:
+                # Sử dụng regex để trích xuất các số sau "name_image"
+                matches = re.findall(f'{name_image}(\d+)', result.stdout)
+                for match in matches:
+                    base_name, extension = os.path.splitext(filename)
+                    new_file_name = f"{base_name}_{match}"
+                    # Gửi tín hiệu đến WebSocket ở đây
+                    new_file = f"{new_file_name}{extension}"
+                    print(f"Person detected in {new_file}. Send signal to WebSocket.")
+                    # Publish đến MQTT
+                    publish.single(topic, f"old_image_{match}", hostname=broker_address)
+                    f2.loop_mqtt_to_waiting_events_old_image()
+                    # Remove file
+                    os.remove(filepath)
+                    return True
+            elif count_occurrences >= 1:
+                print("No support")
+                return True
+        except subprocess.CalledProcessError as e:
+            # Lệnh thất bại, không có người nào được tìm thấy
+            print(f"Error processing {filename}: {e}")
+    return False
