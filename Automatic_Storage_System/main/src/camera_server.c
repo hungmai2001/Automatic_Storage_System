@@ -30,6 +30,7 @@ size_t detected_send_len = sizeof(detected_send);
 static uint8_t no_detected_send[] = "no_face_detected";
 size_t no_detected_send_len = sizeof(no_detected_send);
 #define LED_GPIO_PIN 4 // GPIO 4 for the onboard LED
+#define LED_STATUS_PIN 33 // GPIO 33 for the onboard LED
 SemaphoreHandle_t g_handle_image = NULL;
 camera_fb_t g_image;
 const char *img_get_yes = "image_get_";
@@ -261,6 +262,7 @@ esp_err_t handle_ws_req(httpd_req_t *req)
     {
         downloaded_image = false;
         bool first_cap = true;
+        gpio_set_level(LED_STATUS_PIN,1);
         ESP_LOGI(TAG1, "Start capture");
         while( (ret == ESP_OK) && (downloaded_image == false))
         {
@@ -269,6 +271,7 @@ esp_err_t handle_ws_req(httpd_req_t *req)
             vTaskDelay(pdMS_TO_TICKS(20));
         }
         ESP_LOGI(TAG1, "End capture");
+        gpio_set_level(LED_STATUS_PIN,0);
         downloaded_image = false;
     }
     // Receive name of picture detected from python scripts
@@ -371,7 +374,11 @@ void app_main() {
 		ESP_LOGE(TAG, "Failed to init pins: %s", esp_err_to_name(err));
 		return;
 	}
-    
+    // Led status
+    esp_rom_gpio_pad_select_gpio(LED_STATUS_PIN);
+    /* Set the GPIO as a push/pull output */
+    gpio_set_direction(LED_STATUS_PIN, GPIO_MODE_OUTPUT);
+
 	//Create mutex
 	g_handle_image = xSemaphoreCreateMutex();
 	// Start web server
@@ -379,6 +386,7 @@ void app_main() {
 	ESP_LOGI(TAG, "ESP32 Web Camera Streaming Server is up and running");
     // ESP_ERROR_CHECK(esp_event_loop_create_default());
     mqtt_app_start();
+    gpio_set_level(LED_STATUS_PIN,0);
     
 }
 
