@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tủ đồ thông minh</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+</head>
+<body onload="on_load();">
+    <div id="connect" style="text-align: center;">
+        <input type="button" value="connect server" onclick="on_connect_server();">
+        <input type="text" id="connect_input" name="connect_input" value="esp32-camera.local">
+    </div>
+    <div id="take">
+        <header>
+            <div class="language-support">
+                <a href="#" class="language-vie">VIE</a>
+                <span>|</span>
+                <a href="#" class="language-eng">ENG</a>
+            </div>
+            <div class="support">
+                <img src="image/headphone_icon.png" alt="Hỗ trợ">
+                <p>Hỗ trợ</p>
+            </div>
+        </header>
+        <main>
+            <div class="logo">
+                <h1>ĐỒ ÁN TỐT NGHIỆP</h1>
+                <h2>Tủ đồ thông minh</h2>
+                <h3>Sử dụng nhận diện khuôn mặt và vân tay</h3>
+            </div>
+            <div class="status">
+                <div class="status-box">
+                    <p> Số ô tủ: 7 | Số ô tủ trống: <span id="empty-count">03</span></p>
+                </div>
+            </div>
+            <div class="options">
+                <button class="option" onclick="on_store_item();" id="store">
+                    <img src="image/send_icon.png" alt="Gửi đồ">
+                    <p>GỬI ĐỒ</p>
+                </button>
+                <button class="option" onclick="on_get_item();" id="get">
+                    <img src="image/receive_icon.png" alt="Lấy đồ">
+                    <p>LẤY ĐỒ</p>
+                </button>
+                <button class="option" onclick="on_download_image();" id="download">
+                    <img src="image/receive_icon.png" alt="Tiếp tục">
+                    <p>TIẾP TỤC</p>
+                </button>
+                <button class="option" onclick="on_back();" id="back">
+                    <img src="image/receive_icon.png" alt="Trở lại">
+                    <p>TRỞ LẠI</p>
+                </button>
+            </div>
+        </main>
+    </div>
+    <div id="fail" style="display:none;">
+        Server connection fail.
+    </div>
+    <div style="text-align: center;">
+        <canvas id="canvas_image" width="640" height="480"></canvas>
+    </div>
+    <script src="lib/mqttws31.js"></script>
+    <script src="lib/face-api.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

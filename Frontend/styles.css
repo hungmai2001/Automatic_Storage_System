@@ -1,0 +1,181 @@
+/* Reset CSS */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-image: url('image/background_image.jpg');
+    background-size: 70vw 110vh;
+    background-position: center;
+    background-attachment: local;
+    background-repeat: no-repeat;
+    position: relative;
+    height: 90vh;
+}
+
+/* Font Face for Roboto */
+@font-face {
+    font-family: 'Roboto';
+    src: url('path/to/Roboto-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* Header Styles */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    max-width: 70vw;
+    max-height: 5vh;
+    margin: 0 auto;
+    background-color: rgba(37, 86, 95, 0.8);
+}
+
+.language-support {
+    display: flex;
+    align-items: center;
+    border-radius: 20vw;
+    overflow: hidden;
+    max-height: 5vh;
+    flex-shrink: 0;
+}
+
+.language-support a {
+    display: flex;
+    padding: 0.5vw 1vh;
+    text-decoration: none;
+    font-weight: bold;
+    max-height: 5vh;
+    flex-shrink: 0;
+}
+
+.language-vie {
+    display: flex;
+    background-color: #3fa8e6;
+    color: white;
+    font-size: 1vw;
+    max-height: 5vh;
+}
+
+.language-eng {
+    display: flex;
+    background-color: black;
+    color: white;
+    font-size: 1vw;
+    max-height: 5vh;
+}
+
+.language-support span {
+    display: flex;
+    align-items: center;
+    padding: 0 0.5vh;
+    max-height: 5vh;
+}
+
+.support {
+    display: flex;
+    align-items: center;
+    border-top-left-radius: 1vw;
+    background-color: rgb(23, 168, 149);
+    margin-right: 0.1vw;
+    font-size: 1vw;
+    font-weight: bold;
+    max-height: 5vh;
+}
+
+.support img {
+    width: 2vw;
+    height: 2vw;
+}
+
+/* Main Styles */
+main {
+    text-align: center;
+    max-width: 80vw;
+    margin: 0.5vw auto;
+}
+
+.logo h1 {
+    text-align: center;
+    font-size: 3vw;
+    font-family: 'Algerian', sans-serif;
+    margin: 1vw;
+}
+
+.logo h2 {
+    text-align: center;
+    color: rgb(252, 0, 0);
+    font-size: 2vw;
+    font-family: 'Bahnschrift SemiBold', sans-serif;
+    margin: 0.2vw;
+    font-weight: bold;
+}
+
+.logo h3 {
+    text-align: center;
+    color: rgb(44, 137, 243);
+    font-size: 1.5vw;
+    font-family: 'Bahnschrift SemiBold', sans-serif;
+    margin: 0;
+    font-weight: bold;
+}
+
+.status {
+    max-width: 100%;
+    max-height: 4vh;
+    padding: 1vw;
+    border-radius: 0.2vw;
+    margin-top: 1vh;
+    margin-right: -1vw;
+    margin-left: -1vw;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.status-box {
+    max-width: 100%;
+    max-height: 4vh;
+    background-color: #dedede;
+    padding: 0.5vw 0.5vh;
+    border-radius: 0.5vw;
+    color: rgb(44, 56, 163);
+    font-weight: bold;
+    font-size: 1.3vw;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.options {
+    display: flex;
+    justify-content: space-evenly;
+    margin-top: 5vw;
+}
+
+.option {
+    background-color: #20a4d8;
+    border-radius: 1vw;
+    display: inline-block;
+    margin: 0 0.1vw;
+}
+
+.option img {
+    width: 2vw;
+    height: 2vw;
+    border-radius: 50%;
+    background-color: white;
+    padding: 0.5vw;
+}
+
+.option p {
+    margin: 0;
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 2vw;
+    font-family: 'Segoe UI Black', sans-serif;
+    font-weight: bold;
+    margin-left: 0.1vw;
+    text-shadow: 0 0 0.5vw white;
+}
