@@ -425,7 +425,7 @@ async function on_message(recv_data)
         canvas_image.style.left = '-13%';
         canvas_image.style.transform = 'translate(13%)';
         await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
-        const detection = await faceapi.detectSingleFace(canvas_image, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3}));
+        const detection = await faceapi.detectSingleFace(canvas_image, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.7}));
         if (faceDetectionCount < count_image - 3 && detection !== undefined) {
             const { x, y, width, height } = detection.box;
             ctx.beginPath();
