@@ -149,7 +149,7 @@ def loop_mqtt_to_waiting_events_old_image():
     broker_address = "mqtt.eclipseprojects.io"  # Thay bằng địa chỉ broker MQTT của bạn
     client.connect(broker_address)
     # Subscribe to topic
-    topic = "/topic/hungmai_py_publish"  # Thay bằng tên chủ đề MQTT bạn muốn subscribe
+    topic = "/topic/hungmai_py_subscribe"  # Thay bằng tên chủ đề MQTT bạn muốn subscribe
     client.subscribe(topic)
 
     # Loop until a message is received

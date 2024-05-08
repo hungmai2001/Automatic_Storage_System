@@ -99,7 +99,7 @@
     var downloaded_image = "downloaded_image";
     var comparefinger = "compare_finger";
     var topicToSend = "/topic/hungmai_wb_publish";
-    var topicToSend_py = "/topic/hungmai_py_publish";
+    var topicToSend_py = "/topic/hungmai_py_subscribe";
     var number = 0;
     var number_old_image = 0;
     var number_empty = 0;
@@ -301,6 +301,7 @@
         }
         else if (message.payloadString.includes("continue")) {
           console.log("Chuỗi '" + "continue" + "' được tìm thấy trong chuỗi '");
+          publishToDifferentTopic(message_continue_backend, topicToSend_py);
           removeMessageElement();
           displayMessage("Đóng tủ số " + number_old_image + ".", 0, displayMessageTimeout, "white");
           setTimeout(() => {

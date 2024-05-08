@@ -204,7 +204,10 @@ def find_unknown_people_xx(filename, folder_store, folder_to_check, name_image):
                     return True
             elif count_occurrences >= 1:
                 print("No support")
+                # Remove file
+                os.remove(filepath)
                 return True
+            
         except subprocess.CalledProcessError as e:
             # Lệnh thất bại, không có người nào được tìm thấy
             print(f"Error processing {filename}: {e}")
