@@ -1,4 +1,4 @@
-var count_image = 20;
+var count_image = 10;
 var web_socket = null;
 var store_item = false;
 var get_item = false;
@@ -425,7 +425,7 @@ async function on_message(recv_data)
         canvas_image.style.left = '-13%';
         canvas_image.style.transform = 'translate(13%)';
         await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
-        const detection = await faceapi.detectSingleFace(canvas_image, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.7}));
+        const detection = await faceapi.detectSingleFace(canvas_image, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5}));
         if (faceDetectionCount < count_image - 3 && detection !== undefined) {
             const { x, y, width, height } = detection.box;
             ctx.beginPath();

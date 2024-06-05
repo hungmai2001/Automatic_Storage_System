@@ -1,44 +1,239 @@
-<!DOCTYPE html>
 <html>
-<head>
-    <title>MQTT Subscriber</title>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tủ đồ thông minh</title>
+    <link rel="stylesheet" href="test/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input {
+            font-size: 20px;
+            padding: 10px 20px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            margin: 10px;
+        }
+        input:hover {
+            background-color: #ccc;
+        }
+
+    </style>
     <script src="mqttws31.js"></script>
-</head>
-<body>
-    <h1>MQTT Subscriber</h1>
-    <div id="messages"></div>
+  </head>
+  <body onload="on_load();">
+    <div id="connect" style="text-align: center;">
+      <input type="button" value="connect server" onclick="on_connect_server();">
+      <input type="text" id="connect_input" name="connect_input" value="esp32-camera.local">
+    </div>
+      <div id="take">
+        <header>
+          <div class="language-support">
+              <a href="#" class="language-vie">VIE</a>
+              <span>|</span>
+              <a href="#" class="language-eng">ENG</a>
+          </div>
+          
+          <div class="support">
+              <img src="test/headphone_icon.png" alt="Hỗ trợ">
+              <p>Hỗ trợ</p>
+          </div>
+      </header>
+      <main>
+          <div class="logo">
+              <h1>ĐỒ ÁN TỐT NGHIỆP</h1>
+              <h2>Tủ đồ thông minh</h2>
+              <h3>Sử dụng nhận diện khuôn mặt và vân tay</h3>
+          </div>
+          <div class="status">
+              <div class="status-box">
+                  <p> Số ô tủ: 7 | Số ô tủ trống: <span id="empty-count">03</span></p>
+              </div>
+          </div>
+          <div class="options">
+              <button class="option" onclick="on_store_item();" id="store">
+                  <img src="test/send_icon.png" alt="Gửi đồ">
+                  <p>GỬI ĐỒ</p>
+              </button>
+          </div>
+      </main>
+    </div>
+    <div id="fail" style="display:none;">
+      Server connection fail.
+    </div>
+    <div style="text-align: center;">
+      <canvas id="canvas_image" width="540" height="300"></canvas>
+    </div>
+  </body>
+  <script defer src="face-api.min.js"></script>
+  <script>
+    const displayMessageTimeout = 5000;
+    const receiveMessageTimeout = 10000;
+    var globalMessageElement;
+    var emptyCountElement = document.getElementById("empty-count");
+    // Tạo một MQTT client instance
+    var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "myclientid_" + parseInt(Math.random() * 100, 10));
+    // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
 
-    <script>
-        // Tạo một MQTT client instance
-        var client = new Paho.MQTT.Client("mqtt.eclipseprojects.io", Number(80), "/mqtt", "clientId");
+    client.connect({
+        onSuccess: function () {
+            console.log("Connected to MQTT broker");
+            client.subscribe("/topic/hungmai_py_publish");
+        },
+        onFailure: function (message) {
+            console.log("Connection failed: " + message.errorMessage);
+        },
+        timeout: 1000, // Thời gian chờ (giây) trước khi bỏ kết nối
+        keepAliveInterval: 12000 // Thời gian giữ kết nối (giây)
+    });
 
-        // Khi connect thành công, subscribe đến topic "/topic/hungmai_py_publish"
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
-
-        client.connect({
-            onSuccess: function () {
-                console.log("Connected to MQTT broker");
-                client.subscribe("/topic/hungmai_py_publish");
-            },
-            onFailure: function (message) {
-                console.log("Connection failed: " + message.errorMessage);
-            }
-        });
-
-        // Hàm callback được gọi khi kết nối bị mất
-        function onConnectionLost(responseObject) {
-            if (responseObject.errorCode !== 0) {
-                console.log("Connection lost: " + responseObject.errorMessage);
-            }
+    // Hàm callback được gọi khi kết nối bị mất
+    function onConnectionLost(responseObject) {
+        if (responseObject.errorCode !== 0) {
+          console.log("Connection lost: " + responseObject.errorMessage);
+          setTimeout(function() {
+              client.connect({
+                  onSuccess: function () {
+                      console.log("Reconnected to MQTT broker");
+                      client.subscribe("/topic/hungmai_py_publish");
+                  },
+                  onFailure: function (message) {
+                      console.log("Reconnection failed: " + message.errorMessage);
+                  }
+              });
+          }, 2); // Thử kết nối lại sau 2 mgiây
         }
+    }
 
-        // Hàm callback được gọi khi nhận được một message mới
-        function onMessageArrived(message) {
-            console.log("Received message: " + message.payloadString);
-            var messagesDiv = document.getElementById("messages");
-            messagesDiv.innerText += message.payloadString + "\n";
+    // Hàm callback được gọi khi nhận được một message mới
+    function onMessageArrived(message) {
+        console.log("Received message: " + message.payloadString);
+        // Bắt đầu chạy ứng dụng
+        if (message.payloadString.includes("start_count_")) {
+          console.log("matches" + matches);
+          console.log("Chuỗi '" + "start_count_" + "' được tìm thấy trong chuỗi");
         }
-    </script>
-</body>
+        else {
+          console.log("Không chuỗi nào" + "' được tìm thấy trong chuỗi '");
+        }
+    }
+    function on_load()
+    {
+      document.getElementById('take').style.display = 'none';
+      document.getElementById('fail').style.display = 'none';
+      console.log("on_load");
+    }
+
+    function on_open()
+    {
+      console.log("on_open_connection");
+      // setTimeout(connectWebSocket, 3000);
+    }
+
+    function on_back()
+    {
+      if (old_image == false) {
+        if (status_back_finger == false)
+        {
+          status_back = true;
+          if (status_image == false)
+          {
+            console.log("status_image is true");
+            publishToDifferentTopic(downloaded_image, topicToSend);
+          }
+          count_print_message = 0;
+          console.log("on_back");
+        }
+        end_image = false;
+      }
+    }
+
+    function publishToDifferentTopic(message, topic) {
+        var message = new Paho.MQTT.Message(message);
+        message.destinationName = topic;
+        client.send(message);
+    }
+    async function on_message(recv_data)
+    {
+      if ( ((true == store_item) || (true == get_item)) && (status_back == false) && (end_image == false))
+      {
+        faceapi.tf.engine().startScope();
+        var recv_image_data = new Uint8Array(recv_data.data);
+        var canvas_image = document.getElementById('canvas_image');
+        canvas_image.style.marginTop = '10px';
+        var ctx = canvas_image.getContext('2d');
+        ctx.globalCompositeOperation = 'source-over';
+        var image = new Image();
+        image.src = 'data:image/jpeg;base64,' + recv_data.data;
+        image.onload = async function() {
+          ctx.drawImage(image, 0, 0);
+          await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
+          const detection = await faceapi.detectSingleFace(canvas_image, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3}));
+          if (faceDetectionCount < count_image - 3 && detection !== undefined) {
+              const { x, y, width, height } = detection.box;
+              ctx.beginPath();
+              ctx.strokeStyle = '#37D3D4';
+              ctx.rect(x, y, width, height);
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              ctx.closePath();
+          }        
+        }
+        // Dispose WebGLTexture
+        faceapi.tf.engine().endScope();
+        await faceapi.nets.tinyFaceDetector.dispose();
+      }
+    }
+
+    // Hàm để tải xuống hình ảnh
+    function downloadImage(dataUrl, file_name) {
+      // Tạo một đối tượng a để tạo link tải xuống
+      var a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = file_name; // Đặt tên cho file tải xuống
+      document.body.appendChild(a);
+      a.click(); // Kích hoạt sự kiện click trên đối tượng a
+      document.body.removeChild(a);
+    }
+
+    function displayMessage(message, no_timeout, timeout, string_color)
+    {
+      var messageElement = document.createElement('div');
+      messageElement.style.fontFamily = "'Bahnschrift SemiBold', sans-serif";
+      messageElement.style.fontSize = '1.6vw';
+      messageElement.style.fontWeight = 'bold';
+      messageElement.style.color = string_color;
+      messageElement.style.borderRadius = '1vw'; // Đặt bán kính bo tròn cho góc của background
+      messageElement.style.backgroundColor = '#2B3252';
+      messageElement.style.position = 'absolute';
+      messageElement.style.top = '42%';
+      messageElement.style.left = '50%';
+      messageElement.style.display = 'flex';
+      messageElement.style.padding = '0.5vw';
+      messageElement.style.transform = 'translate(-50%, -42%)';
+      messageElement.innerHTML = message;
+
+      document.body.appendChild(messageElement);
+      if (no_timeout == 0)
+      {
+        setTimeout(() => {
+            document.body.removeChild(messageElement);
+        }, timeout);
+      }
+    }
+
+    
+    function removeMessageElement()
+    {
+      if (globalMessageElement && globalMessageElement.parentNode) {
+        // console.log("globalMessageElement", globalMessageElement);
+        globalMessageElement.parentNode.removeChild(globalMessageElement);
+      }
+    }
+  </script>
 </html>

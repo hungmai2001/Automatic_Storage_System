@@ -203,10 +203,20 @@ def find_unknown_people_xx(filename, folder_store, folder_to_check, name_image):
                     os.remove(filepath)
                     return True
             elif count_occurrences >= 1:
-                print("No support")
-                # Remove file
-                os.remove(filepath)
-                return True
+                # Sử dụng regex để trích xuất các số sau "name_image"
+                matches = re.findall(f'{name_image}(\d+)', result.stdout)
+                for match in matches:
+                    base_name, extension = os.path.splitext(filename)
+                    new_file_name = f"{base_name}_{match}"
+                    # Gửi tín hiệu đến WebSocket ở đây
+                    new_file = f"{new_file_name}{extension}"
+                    print(f"Person detected in {new_file}. Send signal to WebSocket.")
+                    # Publish đến MQTT
+                    publish.single(topic, f"old_image_{match}", hostname=broker_address)
+                    f2.loop_mqtt_to_waiting_events_old_image()
+                    # Remove file
+                    os.remove(filepath)
+                    return True
             
         except subprocess.CalledProcessError as e:
             # Lệnh thất bại, không có người nào được tìm thấy
